@@ -47,7 +47,7 @@ The Vite dev server proxies these paths to `localhost:8080`:
 
 Implemented screens:
 
-- Register/login with JWT access token
+- Register/login with JWT access token and refresh token retry
 - User search
 - Direct conversation creation
 - Group conversation creation from current search results
@@ -59,4 +59,4 @@ Implemented screens:
 
 ## Known Backend Dependency
 
-WebSocket JWT authentication is marked as risky in `docs/CHECKLIST.md`. If STOMP send fails, REST message send still works as fallback, but authenticated WebSocket handling should be completed in the backend for production behavior.
+WebSocket JWT authentication is handled by the backend STOMP `CONNECT` flow. If STOMP send fails, REST message send still works as fallback.

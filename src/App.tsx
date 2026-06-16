@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LogOut, MessageCircle, Plus, Radio, Search, Send, Settings, Sparkles, Users } from 'lucide-react';
-import { api } from './api';
+import { api, setSessionRefreshedHandler } from './api';
 import { clearSession, loadSession, saveSession } from './storage';
 import type { ChatMessage, Conversation, TypingEvent, User } from './types';
 import { useChatSocket } from './useChatSocket';
@@ -127,6 +127,14 @@ export default function App() {
   }, [me, users, conversations]);
 
   const selectedConversation = conversations.find((conversation) => conversation.id === selectedConversationId) ?? null;
+
+  useEffect(() => {
+    setSessionRefreshedHandler((session) => {
+      setToken(session.token);
+      setMe(session.user);
+    });
+    return () => setSessionRefreshedHandler(null);
+  }, []);
 
   const myGroupRole = useMemo(() => {
     if (!selectedConversation || !me) return null;
@@ -284,7 +292,7 @@ export default function App() {
               displayName: authForm.displayName,
             });
 
-      saveSession(response.accessToken, response.user);
+      saveSession(response.accessToken, response.refreshToken, response.user);
       setToken(response.accessToken);
       setMe(response.user);
       setStatus(authMode === 'login' ? 'Logged in' : 'Registered');
@@ -411,7 +419,7 @@ export default function App() {
         bio: profileForm.bio || undefined,
       });
       setMe(updatedUser);
-      saveSession(token, updatedUser);
+      saveSession(token, stored?.refreshToken ?? null, updatedUser);
       setShowProfileModal(false);
       setStatus('Profile updated');
     } catch (caught) {

@@ -1,9 +1,17 @@
 import type { ApiError, ApiResponse, AuthResponse, ChatMessage, Conversation, MessageHistoryResponse, Presence, User } from './types';
+import { clearSession, loadSession, saveSession } from './storage';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
+let onSessionRefreshed: ((session: { token: string; refreshToken: string; user: User }) => void) | null = null;
+
+export function setSessionRefreshedHandler(handler: typeof onSessionRefreshed) {
+  onSessionRefreshed = handler;
+}
+
 interface RequestOptions extends RequestInit {
   token?: string | null;
+  skipRefresh?: boolean;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -21,6 +29,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const body = (await response.json().catch(() => null)) as ApiResponse<T> | ApiError | null;
 
+  if (response.status === 401 && options.token && !options.skipRefresh) {
+    const refreshed = await refreshExpiredSession();
+    if (refreshed) {
+      return request<T>(path, { ...options, token: refreshed.accessToken, skipRefresh: true });
+    }
+  }
+
   if (!response.ok) {
     const message = body && 'message' in body && body.message ? body.message : `Request failed: ${response.status}`;
     throw new Error(message);
@@ -31,6 +46,32 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   return body.data;
+}
+
+async function refreshExpiredSession(): Promise<AuthResponse | null> {
+  const session = loadSession();
+  if (!session?.refreshToken) {
+    clearSession();
+    return null;
+  }
+
+  try {
+    const response = await request<AuthResponse>('/api/v1/auth/refresh-token', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken: session.refreshToken }),
+      skipRefresh: true,
+    });
+    saveSession(response.accessToken, response.refreshToken, response.user);
+    onSessionRefreshed?.({
+      token: response.accessToken,
+      refreshToken: response.refreshToken,
+      user: response.user,
+    });
+    return response;
+  } catch {
+    clearSession();
+    return null;
+  }
 }
 
 export const api = {
