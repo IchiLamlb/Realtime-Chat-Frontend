@@ -1,11 +1,12 @@
 import { Client, type IMessage } from '@stomp/stompjs';
-import { useEffect, useRef, useState } from 'react';
-import type { ChatMessage, TypingEvent } from './types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChatMessage, MessageReceipt, TypingEvent } from './types';
 
 interface UseChatSocketOptions {
   conversationId: string | null;
   token: string | null;
   onMessage: (message: ChatMessage) => void;
+  onReceipt: (receipt: MessageReceipt) => void;
   onTyping: (event: TypingEvent) => void;
 }
 
@@ -14,7 +15,19 @@ function socketUrl() {
   return `${protocol}//${window.location.host}/ws`;
 }
 
-export function useChatSocket({ conversationId, token, onMessage, onTyping }: UseChatSocketOptions) {
+function isChatMessage(payload: unknown): payload is ChatMessage {
+  return Boolean(payload && typeof payload === 'object' && 'id' in payload && 'content' in payload);
+}
+
+function isTypingEvent(payload: unknown): payload is TypingEvent {
+  return Boolean(payload && typeof payload === 'object' && 'typing' in payload);
+}
+
+function isMessageReceipt(payload: unknown): payload is MessageReceipt {
+  return Boolean(payload && typeof payload === 'object' && 'messageId' in payload && 'status' in payload);
+}
+
+export function useChatSocket({ conversationId, token, onMessage, onReceipt, onTyping }: UseChatSocketOptions) {
   const [connected, setConnected] = useState(false);
   const clientRef = useRef<Client | null>(null);
 
@@ -35,12 +48,16 @@ export function useChatSocket({ conversationId, token, onMessage, onTyping }: Us
       onConnect: () => {
         setConnected(true);
         client.subscribe(`/topic/conversations/${conversationId}`, (frame: IMessage) => {
-          const payload = JSON.parse(frame.body) as ChatMessage | TypingEvent;
-          if ('content' in payload) {
+          const payload = JSON.parse(frame.body) as ChatMessage | MessageReceipt | TypingEvent;
+          if (isChatMessage(payload)) {
             onMessage(payload);
             return;
           }
-          if ('typing' in payload) {
+          if (isMessageReceipt(payload)) {
+            onReceipt(payload);
+            return;
+          }
+          if (isTypingEvent(payload)) {
             onTyping(payload);
           }
         });
@@ -58,21 +75,38 @@ export function useChatSocket({ conversationId, token, onMessage, onTyping }: Us
       clientRef.current = null;
       setConnected(false);
     };
-  }, [conversationId, token, onMessage, onTyping]);
+  }, [conversationId, token, onMessage, onReceipt, onTyping]);
 
-  function sendMessage(payload: { conversationId: string; type: 'TEXT'; content: string; metadata: Record<string, unknown> }) {
+  const sendMessage = useCallback((payload: { conversationId: string; type: 'TEXT'; content: string; metadata: Record<string, unknown> }) => {
     clientRef.current?.publish({
       destination: '/app/chat.sendMessage',
       body: JSON.stringify(payload),
     });
-  }
+  }, []);
 
-  function sendTyping(payload: { conversationId: string; typing: boolean }) {
+  const sendTyping = useCallback((payload: { conversationId: string; typing: boolean }) => {
     clientRef.current?.publish({
       destination: '/app/chat.typing',
       body: JSON.stringify(payload),
     });
-  }
+  }, []);
 
-  return { connected, sendMessage, sendTyping };
+  const sendDelivered = useCallback((messageId: string) => {
+    clientRef.current?.publish({
+      destination: '/app/chat.deliverMessage',
+      body: JSON.stringify({ messageId }),
+    });
+  }, []);
+
+  const sendRead = useCallback((messageId: string) => {
+    clientRef.current?.publish({
+      destination: '/app/chat.readMessage',
+      body: JSON.stringify({ messageId }),
+    });
+  }, []);
+
+  return useMemo(
+    () => ({ connected, sendMessage, sendTyping, sendDelivered, sendRead }),
+    [connected, sendDelivered, sendMessage, sendRead, sendTyping],
+  );
 }

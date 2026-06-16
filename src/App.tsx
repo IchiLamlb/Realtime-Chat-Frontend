@@ -2,10 +2,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import { LogOut, MessageCircle, Plus, Radio, Search, Send, Settings, Sparkles, Users } from 'lucide-react';
 import { api, setSessionRefreshedHandler } from './api';
 import { clearSession, loadSession, saveSession } from './storage';
-import type { ChatMessage, Conversation, TypingEvent, User } from './types';
+import type { ChatMessage, Conversation, MessageReceipt, TypingEvent, User } from './types';
 import { useChatSocket } from './useChatSocket';
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
 
 function initials(name: string) {
   if (!name) return '?';
@@ -62,6 +62,11 @@ export default function App() {
     usernameOrEmail: '',
     password: '',
   });
+  const [passwordResetForm, setPasswordResetForm] = useState({
+    email: '',
+    token: '',
+    newPassword: '',
+  });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -81,6 +86,7 @@ export default function App() {
 
   // Presence states
   const [presenceMap, setPresenceMap] = useState<Map<string, string>>(new Map());
+  const acknowledgedReadIds = useRef<Set<string>>(new Set());
 
   // Profile modal states
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -129,6 +135,12 @@ export default function App() {
   const selectedConversation = conversations.find((conversation) => conversation.id === selectedConversationId) ?? null;
 
   useEffect(() => {
+    const resetToken = new URLSearchParams(window.location.search).get('resetToken');
+    if (resetToken) {
+      setPasswordResetForm((current) => ({ ...current, token: resetToken }));
+      setAuthMode('reset');
+    }
+
     setSessionRefreshedHandler((session) => {
       setToken(session.token);
       setMe(session.user);
@@ -144,11 +156,20 @@ export default function App() {
 
   const handleSocketMessage = useCallback((message: ChatMessage) => {
     setMessages((current) => {
-      if (current.some((item) => item.id === message.id)) {
-        return current;
+      const existingIndex = current.findIndex((item) => item.id === message.id);
+      if (existingIndex >= 0) {
+        return current.map((item, index) => index === existingIndex ? { ...item, ...message } : item);
       }
       return [...current, message];
     });
+  }, []);
+
+  const handleReceipt = useCallback((receipt: MessageReceipt) => {
+    setMessages((current) =>
+      current.map((message) =>
+        message.id === receipt.messageId ? { ...message, status: receipt.status } : message,
+      ),
+    );
   }, []);
 
   const handleTyping = useCallback(
@@ -166,6 +187,7 @@ export default function App() {
     conversationId: selectedConversationId,
     token,
     onMessage: handleSocketMessage,
+    onReceipt: handleReceipt,
     onTyping: handleTyping,
   });
 
@@ -225,16 +247,20 @@ export default function App() {
         });
       });
 
-      const nextMap = new Map(presenceMap);
+      const updates = new Map<string, string>();
       for (const userId of uniqueUserIds) {
         try {
           const presenceResult = await api.presence(token, userId);
-          nextMap.set(userId, presenceResult.status);
+          updates.set(userId, presenceResult.status);
         } catch {
           // ignore
         }
       }
-      setPresenceMap(nextMap);
+      setPresenceMap((current) => {
+        const nextMap = new Map(current);
+        updates.forEach((value, key) => nextMap.set(key, value));
+        return nextMap;
+      });
     };
 
     void fetchPresences();
@@ -248,6 +274,40 @@ export default function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]); // trigger scroll only when new messages are added, not during pagination prepend
+
+  useEffect(() => {
+    acknowledgedReadIds.current.clear();
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (!token || !me || !selectedConversationId || messages.length === 0) {
+      return;
+    }
+
+    const unreadIncoming = messages.filter(
+      (message) =>
+        message.conversationId === selectedConversationId &&
+        message.senderId !== me.id &&
+        message.status !== 'READ' &&
+        !acknowledgedReadIds.current.has(message.id),
+    );
+
+    unreadIncoming.forEach((message) => {
+      acknowledgedReadIds.current.add(message.id);
+
+      if (socket.connected) {
+        socket.sendRead(message.id);
+        return;
+      }
+
+      void api
+        .markRead(token, message.id)
+        .then(handleReceipt)
+        .catch(() => {
+          acknowledgedReadIds.current.delete(message.id);
+        });
+    });
+  }, [handleReceipt, me, messages, selectedConversationId, socket, token]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -298,6 +358,43 @@ export default function App() {
       setStatus(authMode === 'login' ? 'Logged in' : 'Registered');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function requestPasswordReset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await api.forgotPassword({ email: passwordResetForm.email });
+      setStatus('Password reset email sent if the address is registered');
+      setAuthMode('login');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Password reset request failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await api.resetPassword({
+        token: passwordResetForm.token,
+        newPassword: passwordResetForm.newPassword,
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setPasswordResetForm({ email: '', token: '', newPassword: '' });
+      setAuthMode('login');
+      setStatus('Password reset. You can log in now');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Password reset failed');
     } finally {
       setLoading(false);
     }
@@ -570,8 +667,54 @@ export default function App() {
             </button>
           </div>
 
-          <form onSubmit={authenticate} className="stack">
-            {authMode === 'register' ? (
+          {authMode === 'forgot' ? (
+            <form onSubmit={requestPasswordReset} className="stack">
+              <label>
+                Registered email
+                <input
+                  type="email"
+                  value={passwordResetForm.email}
+                  onChange={(event) => setPasswordResetForm({ ...passwordResetForm, email: event.target.value })}
+                  required
+                />
+              </label>
+              <button className="primary" disabled={loading}>
+                {loading ? 'Sending...' : 'Send reset email'}
+              </button>
+              <button type="button" className="link-button" onClick={() => setAuthMode('login')}>
+                Back to login
+              </button>
+            </form>
+          ) : authMode === 'reset' ? (
+            <form onSubmit={resetPassword} className="stack">
+              <label>
+                Reset token
+                <input
+                  value={passwordResetForm.token}
+                  onChange={(event) => setPasswordResetForm({ ...passwordResetForm, token: event.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                New password
+                <input
+                  type="password"
+                  value={passwordResetForm.newPassword}
+                  onChange={(event) => setPasswordResetForm({ ...passwordResetForm, newPassword: event.target.value })}
+                  minLength={8}
+                  required
+                />
+              </label>
+              <button className="primary" disabled={loading}>
+                {loading ? 'Working...' : 'Reset password'}
+              </button>
+              <button type="button" className="link-button" onClick={() => setAuthMode('login')}>
+                Back to login
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={authenticate} className="stack">
+              {authMode === 'register' ? (
               <>
                 <label>
                   Username
@@ -599,7 +742,13 @@ export default function App() {
             <button className="primary" disabled={loading}>
               {loading ? 'Working...' : authMode === 'login' ? 'Enter app' : 'Create account'}
             </button>
-          </form>
+              {authMode === 'login' && (
+                <button type="button" className="link-button" onClick={() => setAuthMode('forgot')}>
+                  Forgot password?
+                </button>
+              )}
+            </form>
+          )}
           {error && <p className="error">{error}</p>}
         </section>
       ) : (

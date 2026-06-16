@@ -70,6 +70,14 @@ export interface MessageHistoryResponse {
   hasMore: boolean;
 }
 
+export interface MessageReceipt {
+  messageId: string;
+  conversationId: string;
+  userId: string;
+  status: 'DELIVERED' | 'READ';
+  createdAt: string;
+}
+
 export interface TypingEvent {
   conversationId: string;
   userId: string;

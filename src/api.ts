@@ -1,4 +1,4 @@
-import type { ApiError, ApiResponse, AuthResponse, ChatMessage, Conversation, MessageHistoryResponse, Presence, User } from './types';
+import type { ApiError, ApiResponse, AuthResponse, ChatMessage, Conversation, MessageHistoryResponse, MessageReceipt, Presence, User } from './types';
 import { clearSession, loadSession, saveSession } from './storage';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -86,6 +86,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  forgotPassword: async (payload: { email: string }) =>
+    request<void>('/api/v1/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  resetPassword: async (payload: { token: string; newPassword: string }) =>
+    request<void>('/api/v1/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   me: async (token: string) => request<User>('/api/v1/users/me', { token }),
   updateMe: async (token: string, payload: { displayName?: string; avatarUrl?: string; bio?: string }) =>
     request<User>('/api/v1/users/me', {
@@ -120,6 +130,16 @@ export const api = {
       method: 'POST',
       token,
       body: JSON.stringify(payload),
+    }),
+  markDelivered: async (token: string, messageId: string) =>
+    request<MessageReceipt>(`/api/v1/messages/${messageId}/delivered`, {
+      method: 'POST',
+      token,
+    }),
+  markRead: async (token: string, messageId: string) =>
+    request<MessageReceipt>(`/api/v1/messages/${messageId}/read`, {
+      method: 'POST',
+      token,
     }),
   updateGroup: async (token: string, conversationId: string, payload: { name: string; avatarUrl?: string | null }) =>
     request<Conversation>(`/api/v1/conversations/${conversationId}`, {

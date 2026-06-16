@@ -232,6 +232,15 @@ input:focus {
   margin-top: 6px;
 }
 
+.link-button {
+  border: 0;
+  background: transparent;
+  color: #6f4325;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 8px;
+}
+
 .app-grid {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
