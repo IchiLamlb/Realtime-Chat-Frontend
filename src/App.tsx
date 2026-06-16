@@ -1,11 +1,12 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, MessageCircle, Plus, Radio, Search, Send, Settings, Sparkles, Users } from 'lucide-react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Eye, EyeOff, FileText, LogOut, MessageCircle, Paperclip, Plus, Radio, Search, Send, Settings, Sparkles, Users } from 'lucide-react';
 import { api, setSessionRefreshedHandler } from './api';
 import { clearSession, loadSession, saveSession } from './storage';
 import type { ChatMessage, Conversation, MessageReceipt, TypingEvent, User } from './types';
 import { useChatSocket } from './useChatSocket';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
+const MAX_ATTACHMENT_SIZE = 100 * 1024 * 1024;
 
 function initials(name: string) {
   if (!name) return '?';
@@ -22,6 +23,14 @@ function formatTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
+}
+
+function formatFileSize(value: unknown) {
+  const size = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(size) || size < 0) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function renderStatus(status: ChatMessage['status']) {
@@ -55,6 +64,8 @@ export default function App() {
   const [token, setToken] = useState<string | null>(stored?.token ?? null);
   const [me, setMe] = useState<User | null>(stored?.user ?? null);
   const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [authForm, setAuthForm] = useState({
     username: '',
     email: '',
@@ -77,8 +88,13 @@ export default function App() {
   const [status, setStatus] = useState('Ready');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, number>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const prevConversationIdRef = useRef<string | null>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
+  const messageFeedRef = useRef<HTMLDivElement | null>(null);
 
   // Pagination states
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -204,7 +220,7 @@ export default function App() {
     api
       .messages(token, selectedConversationId)
       .then((res) => {
-        setMessages(res.items);
+        setMessages([...res.items].reverse());
         setNextCursor(res.nextCursor);
         setHasMore(res.hasMore);
       })
@@ -213,7 +229,7 @@ export default function App() {
   }, [selectedConversationId, token]);
 
   // Load older messages
-  async function loadMoreMessages() {
+  async function loadMoreMessages(container?: HTMLDivElement | null, oldScrollHeight?: number) {
     if (!token || !selectedConversationId || !nextCursor || loading) {
       return;
     }
@@ -221,13 +237,34 @@ export default function App() {
     setLoading(true);
     try {
       const res = await api.messages(token, selectedConversationId, 50, nextCursor);
-      setMessages((current) => [...res.items, ...current]);
+      
+      const targetContainer = container || messageFeedRef.current;
+      const targetOldScrollHeight = oldScrollHeight || (targetContainer ? targetContainer.scrollHeight : 0);
+
+      setMessages((current) => [...[...res.items].reverse(), ...current]);
       setNextCursor(res.nextCursor);
       setHasMore(res.hasMore);
+
+      if (targetContainer && targetOldScrollHeight > 0) {
+        requestAnimationFrame(() => {
+          const newScrollHeight = targetContainer.scrollHeight;
+          targetContainer.scrollTop = newScrollHeight - targetOldScrollHeight;
+        });
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to load older messages');
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleScroll() {
+    const container = messageFeedRef.current;
+    if (!container) return;
+
+    if (container.scrollTop <= 10 && hasMore && !loading && nextCursor) {
+      const oldScrollHeight = container.scrollHeight;
+      void loadMoreMessages(container, oldScrollHeight);
     }
   }
 
@@ -272,8 +309,32 @@ export default function App() {
   }, [conversations, token, me?.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]); // trigger scroll only when new messages are added, not during pagination prepend
+    if (messages.length === 0) {
+      return;
+    }
+
+    const newestMessage = messages[messages.length - 1];
+    const hasNewMessage = newestMessage?.id !== lastMessageIdRef.current;
+
+    if (hasNewMessage) {
+      const isNewRoom = prevConversationIdRef.current !== selectedConversationId;
+      prevConversationIdRef.current = selectedConversationId;
+      lastMessageIdRef.current = newestMessage?.id;
+
+      if (isNewRoom) {
+        // Scroll instantly when switching rooms
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        // Scroll again after a brief layout/image render pass
+        const timer = setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        }, 50);
+        return () => clearTimeout(timer);
+      } else {
+        // Smooth scroll for new incoming/outgoing messages
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [messages, selectedConversationId]);
 
   useEffect(() => {
     acknowledgedReadIds.current.clear();
@@ -472,6 +533,36 @@ export default function App() {
       handleSocketMessage(sent);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Send failed');
+    }
+  }
+
+  async function handleAttachmentSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file || !token || !selectedConversationId) {
+      return;
+    }
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      setError('File must be 100MB or smaller');
+      return;
+    }
+
+    setError(null);
+    setAttachmentUploading(true);
+    try {
+      const sent = await api.sendAttachment(token, {
+        conversationId: selectedConversationId,
+        file,
+        content: messageDraft,
+      });
+      setMessageDraft('');
+      handleSocketMessage(sent);
+      setStatus('Attachment sent');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Upload failed');
+    } finally {
+      setAttachmentUploading(false);
     }
   }
 
@@ -697,13 +788,23 @@ export default function App() {
               </label>
               <label>
                 New password
-                <input
-                  type="password"
-                  value={passwordResetForm.newPassword}
-                  onChange={(event) => setPasswordResetForm({ ...passwordResetForm, newPassword: event.target.value })}
-                  minLength={8}
-                  required
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    value={passwordResetForm.newPassword}
+                    onChange={(event) => setPasswordResetForm({ ...passwordResetForm, newPassword: event.target.value })}
+                    minLength={8}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    aria-label={showResetPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showResetPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </label>
               <button className="primary" disabled={loading}>
                 {loading ? 'Working...' : 'Reset password'}
@@ -737,7 +838,23 @@ export default function App() {
             )}
             <label>
               Password
-              <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} minLength={8} required />
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={authForm.password}
+                  onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })}
+                  minLength={8}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </label>
             <button className="primary" disabled={loading}>
               {loading ? 'Working...' : authMode === 'login' ? 'Enter app' : 'Create account'}
@@ -871,12 +988,10 @@ export default function App() {
               </div>
             </header>
 
-            <div className="message-feed">
-              {hasMore && (
+            <div ref={messageFeedRef} className="message-feed" onScroll={handleScroll}>
+              {loading && messages.length > 0 && (
                 <div className="pagination-bar">
-                  <button className="load-more-button" onClick={loadMoreMessages} disabled={loading}>
-                    {loading ? 'Loading...' : 'Load older messages'}
-                  </button>
+                  <span className="pagination-loader">Loading older messages...</span>
                 </div>
               )}
               {loading && messages.length === 0 && <div className="empty-state">Loading...</div>}
@@ -892,6 +1007,10 @@ export default function App() {
 
                 const mine = message.senderId === me.id;
                 const sender = usersById.get(message.senderId);
+                const metadata = message.metadata ?? {};
+                const attachmentUrl = typeof metadata.url === 'string' ? metadata.url : '';
+                const attachmentName = typeof metadata.originalName === 'string' ? metadata.originalName : message.content;
+                const attachmentSize = formatFileSize(metadata.size);
                 
                 const prevMessage = index > 0 ? messages[index - 1] : null;
                 const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
@@ -926,7 +1045,24 @@ export default function App() {
                         <span className="message-sender-name">{sender?.displayName ?? 'Member'}</span>
                       )}
                       <article className={`message-bubble ${mine ? 'mine' : ''} ${bubbleClass}`}>
-                        <p className="message-content">{message.content}</p>
+                        {message.type === 'IMAGE' && attachmentUrl ? (
+                          <a className="image-attachment" href={attachmentUrl} target="_blank" rel="noreferrer">
+                            <img src={attachmentUrl} alt={attachmentName} />
+                            {message.content && message.content !== attachmentName && (
+                              <span className="message-content">{message.content}</span>
+                            )}
+                          </a>
+                        ) : message.type === 'FILE' && attachmentUrl ? (
+                          <a className="file-attachment" href={attachmentUrl} target="_blank" rel="noreferrer" download={attachmentName}>
+                            <FileText size={22} />
+                            <span>
+                              <strong>{attachmentName}</strong>
+                              {attachmentSize && <small>{attachmentSize}</small>}
+                            </span>
+                          </a>
+                        ) : (
+                          <p className="message-content">{message.content}</p>
+                        )}
                         <div className="message-info">
                           <time className="message-time">{formatTime(message.createdAt)}</time>
                           {mine && renderStatus(message.status)}
@@ -942,13 +1078,30 @@ export default function App() {
             <div className="typing-line">{activeTypers ? `${activeTypers} is typing...` : status}</div>
 
             <form className="composer" onSubmit={sendMessage}>
+              <button
+                type="button"
+                className="attach-button"
+                title="Attach file"
+                disabled={!selectedConversationId || attachmentUploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip size={18} />
+              </button>
+              <input
+                ref={fileInputRef}
+                className="file-input"
+                type="file"
+                accept="image/*,*"
+                onChange={handleAttachmentSelected}
+                disabled={!selectedConversationId || attachmentUploading}
+              />
               <input
                 placeholder={selectedConversationId ? 'Write a message...' : 'Choose or create a conversation first'}
                 value={messageDraft}
                 onChange={(event) => handleDraft(event.target.value)}
                 disabled={!selectedConversationId}
               />
-              <button disabled={!selectedConversationId || !messageDraft.trim()}>
+              <button disabled={!selectedConversationId || !messageDraft.trim() || attachmentUploading}>
                 <Send size={18} />
                 Send
               </button>

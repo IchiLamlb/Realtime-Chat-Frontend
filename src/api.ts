@@ -16,7 +16,9 @@ interface RequestOptions extends RequestInit {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
+  if (!(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   if (options.token) {
     headers.set('Authorization', `Bearer ${options.token}`);
@@ -131,6 +133,19 @@ export const api = {
       token,
       body: JSON.stringify(payload),
     }),
+  sendAttachment: async (token: string, payload: { conversationId: string; file: File; content?: string }) => {
+    const formData = new FormData();
+    formData.set('conversationId', payload.conversationId);
+    formData.set('file', payload.file);
+    if (payload.content?.trim()) {
+      formData.set('content', payload.content.trim());
+    }
+    return request<ChatMessage>('/api/v1/messages/attachments', {
+      method: 'POST',
+      token,
+      body: formData,
+    });
+  },
   markDelivered: async (token: string, messageId: string) =>
     request<MessageReceipt>(`/api/v1/messages/${messageId}/delivered`, {
       method: 'POST',
