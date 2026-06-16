@@ -1,4 +1,4 @@
-import type { ApiError, ApiResponse, AuthResponse, ChatMessage, Conversation, Presence, User } from './types';
+import type { ApiError, ApiResponse, AuthResponse, ChatMessage, Conversation, MessageHistoryResponse, Presence, User } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
@@ -69,12 +69,42 @@ export const api = {
       token,
       body: JSON.stringify(payload),
     }),
-  messages: async (token: string, conversationId: string, limit = 50) =>
-    request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/messages?limit=${limit}`, { token }),
-  sendMessage: async (token: string, payload: { conversationId: string; type: 'TEXT'; content: string; metadata: Record<string, unknown> }) =>
+  messages: async (token: string, conversationId: string, limit = 50, cursor?: string) =>
+    request<MessageHistoryResponse>(
+      `/api/v1/conversations/${conversationId}/messages?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`,
+      { token }
+    ),
+  sendMessage: async (token: string, payload: { conversationId: string; type: 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM'; content: string; metadata: Record<string, unknown> }) =>
     request<ChatMessage>('/api/v1/messages', {
       method: 'POST',
       token,
       body: JSON.stringify(payload),
+    }),
+  updateGroup: async (token: string, conversationId: string, payload: { name: string; avatarUrl?: string | null }) =>
+    request<Conversation>(`/api/v1/conversations/${conversationId}`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify(payload),
+    }),
+  addMember: async (token: string, conversationId: string, userId: string) =>
+    request<Conversation>(`/api/v1/conversations/${conversationId}/members`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ userId }),
+    }),
+  removeMember: async (token: string, conversationId: string, memberId: string) =>
+    request<Conversation>(`/api/v1/conversations/${conversationId}/members/${memberId}`, {
+      method: 'DELETE',
+      token,
+    }),
+  leaveGroup: async (token: string, conversationId: string) =>
+    request<void>(`/api/v1/conversations/${conversationId}/members/me`, {
+      method: 'DELETE',
+      token,
+    }),
+  dissolveGroup: async (token: string, conversationId: string) =>
+    request<void>(`/api/v1/conversations/${conversationId}`, {
+      method: 'DELETE',
+      token,
     }),
 };

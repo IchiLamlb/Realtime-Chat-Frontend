@@ -34,6 +34,14 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface ConversationMember {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+}
+
 export interface Conversation {
   id: string;
   type: ConversationType;
@@ -41,6 +49,7 @@ export interface Conversation {
   avatarUrl: string | null;
   createdBy: string;
   createdAt: string;
+  members: ConversationMember[];
 }
 
 export interface ChatMessage {
@@ -52,6 +61,12 @@ export interface ChatMessage {
   metadata: Record<string, unknown> | null;
   status: MessageStatus;
   createdAt: string;
+}
+
+export interface MessageHistoryResponse {
+  items: ChatMessage[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 export interface TypingEvent {
