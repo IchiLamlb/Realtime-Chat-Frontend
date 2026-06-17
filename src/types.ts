@@ -40,6 +40,7 @@ export interface ConversationMember {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  nickname: string | null;
   role: 'OWNER' | 'ADMIN' | 'MEMBER';
 }
 
@@ -48,6 +49,8 @@ export interface Conversation {
   type: ConversationType;
   name: string | null;
   avatarUrl: string | null;
+  theme: string | null;
+  backgroundColor: string | null;
   createdBy: string;
   createdAt: string;
   members: ConversationMember[];

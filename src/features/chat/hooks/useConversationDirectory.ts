@@ -273,6 +273,30 @@ export function useConversationDirectory({
     setPresenceMap(new Map());
   }
 
+  async function updateSettings(theme: string, backgroundColor: string) {
+    if (!token || !selectedConversationId) return;
+    setError(null);
+    try {
+      await api.updateConversationSettings(token, selectedConversationId, { theme, backgroundColor });
+      await refreshConversations();
+      setStatus('Settings updated');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to update settings');
+    }
+  }
+
+  async function updateNickname(targetUserId: string, nickname: string | null) {
+    if (!token || !selectedConversationId) return;
+    setError(null);
+    try {
+      await api.updateNickname(token, selectedConversationId, targetUserId, nickname);
+      await refreshConversations();
+      setStatus('Nickname updated');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to update nickname');
+    }
+  }
+
   return {
     conversations,
     selectedConversation,
@@ -304,5 +328,7 @@ export function useConversationDirectory({
     searchGroupUsers,
     loadMoreGroupCandidates,
     clearDirectory,
+    updateSettings,
+    updateNickname,
   };
 }

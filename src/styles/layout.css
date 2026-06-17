@@ -346,6 +346,19 @@ input:focus {
   gap: 8px;
 }
 
+
+.conversation-list button {
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.conversation-list-item-body,
+.chat-header-actions,
+.member-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .conversation-list-item-body {
   justify-content: space-between;
   width: 100%;
@@ -387,6 +400,30 @@ input:focus {
   letter-spacing: -0.05em;
 }
 
+.chat-panel[data-theme="light"] {
+  background: #ffffff;
+}
+
+.chat-panel[data-theme="dark"] {
+  background: #202124;
+  color: #e8eaed;
+}
+.chat-panel[data-theme="dark"] .chat-header h2,
+.chat-panel[data-theme="dark"] .eyebrow {
+  color: #e8eaed;
+}
+.chat-panel[data-theme="dark"] .chat-header {
+  border-bottom: 1px solid #3c4043;
+}
+
+.chat-panel[data-theme="ocean"] {
+  background: linear-gradient(135deg, #e0f7fa, #80deea);
+}
+
+.chat-panel[data-theme="sunset"] {
+  background: linear-gradient(135deg, #ffe0b2, #ffab91);
+}
+
 .live-pill {
   padding: 10px 13px;
   border-radius: 999px;
@@ -401,4 +438,3 @@ input:focus {
   color: #fff9eb;
   background: var(--olive);
 }
-

@@ -21,7 +21,7 @@ export function conversationLabel(conversation: Conversation, usersById: Map<str
 
   if (conversation.type === 'DIRECT') {
     const other = directConversationPeer(conversation, me);
-    return other?.displayName ?? 'Direct conversation';
+    return other?.nickname ?? other?.displayName ?? 'Direct conversation';
   }
 
   return 'Group conversation';

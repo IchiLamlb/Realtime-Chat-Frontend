@@ -59,6 +59,8 @@ export interface ChatController {
     toggleGroupMember: (userId: string) => void;
     searchGroupUsers: () => Promise<void>;
     loadMoreGroupCandidates: () => void;
+    updateSettings: (theme: string, backgroundColor: string) => Promise<void>;
+    updateNickname: (targetUserId: string, nickname: string | null) => Promise<void>;
   };
   chat: {
     selectedConversation: Conversation | null;

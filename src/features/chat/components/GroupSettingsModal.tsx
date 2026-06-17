@@ -5,7 +5,7 @@ import { useChatControllerContext } from '../model/useChatControllerContext';
 import { ImageCropper } from './ImageCropper';
 
 export function GroupSettingsModal() {
-  const { chat, group, session } = useChatControllerContext();
+  const { chat, group, session, sidebar } = useChatControllerContext();
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const selectedConversation = chat.selectedConversation;
 
@@ -79,7 +79,37 @@ export function GroupSettingsModal() {
                     <input type="file" accept="image/*" onChange={handleFileChange} />
                   </div>
                 </label>
-                <button type="submit" className="primary" disabled={chat.loading}>
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label>Theme</label>
+                  <select 
+                    value={selectedConversation.theme || ''} 
+                    onChange={(e) => sidebar.updateSettings(e.target.value, selectedConversation.backgroundColor || '')}
+                  >
+                    <option value="">Default</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="ocean">Ocean</option>
+                    <option value="sunset">Sunset</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Background Color (Hex code)</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      type="color"
+                      value={selectedConversation.backgroundColor || '#ffffff'}
+                      onChange={(e) => sidebar.updateSettings(selectedConversation.theme || '', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => sidebar.updateSettings(selectedConversation.theme || '', '')}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" className="primary" disabled={chat.loading} style={{ marginTop: '1rem' }}>
                   Update Group Profile
                 </button>
               </form>
@@ -95,30 +125,41 @@ export function GroupSettingsModal() {
             <h4>Members ({selectedConversation.members?.length || 0})</h4>
             <div className="stack modal-scroll-list">
               {selectedConversation.members?.map((member) => (
-                <div key={member.userId} className="member-list-item">
-                  <div className="member-info">
-                    {member.avatarUrl ? (
-                      <img src={member.avatarUrl} alt={member.displayName} className="avatar-small" style={{ objectFit: 'cover' }} />
-                    ) : (
-                      <div className="avatar-small">{initials(member.displayName)}</div>
-                    )}
-                    <div>
-                      <strong>{member.displayName}</strong>
-                      <span>@{member.username}</span>
+                <div key={member.userId} className="member-list-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="member-info">
+                      {member.avatarUrl ? (
+                        <img src={member.avatarUrl} alt={member.displayName} className="avatar-small" style={{ objectFit: 'cover' }} />
+                      ) : (
+                        <div className="avatar-small">{initials(member.displayName)}</div>
+                      )}
+                      <div>
+                        <strong>{member.nickname || member.displayName}</strong>
+                        <span>@{member.username}</span>
+                      </div>
+                    </div>
+                    <div className="member-row-actions">
+                      <span className={`member-role-badge ${member.role.toLowerCase()}`}>{member.role}</span>
+                      {canManageGroup && member.userId !== session.me?.id && (
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => void group.removeMember(member.userId)}
+                          disabled={member.role === 'OWNER' || (member.role === 'ADMIN' && group.myRole !== 'OWNER')}
+                        >
+                          Remove
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="member-row-actions">
-                    <span className={`member-role-badge ${member.role.toLowerCase()}`}>{member.role}</span>
-                    {canManageGroup && member.userId !== session.me?.id && (
-                      <button
-                        type="button"
-                        className="danger-button"
-                        onClick={() => void group.removeMember(member.userId)}
-                        disabled={member.role === 'OWNER' || (member.role === 'ADMIN' && group.myRole !== 'OWNER')}
-                      >
-                        Remove
-                      </button>
-                    )}
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Set nickname..." 
+                      defaultValue={member.nickname || ''}
+                      onBlur={(e) => sidebar.updateNickname(member.userId, e.target.value.trim() || null)}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
+                    />
                   </div>
                 </div>
               ))}

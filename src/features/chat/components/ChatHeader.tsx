@@ -4,9 +4,10 @@ import { useChatControllerContext } from '../model/useChatControllerContext';
 
 interface ChatHeaderProps {
   startCall?: () => void;
+  openDirectSettings?: () => void;
 }
 
-export function ChatHeader({ startCall }: ChatHeaderProps = {}) {
+export function ChatHeader({ startCall, openDirectSettings }: ChatHeaderProps = {}) {
   const { chat, group, session, sidebar } = useChatControllerContext();
   const { selectedConversation } = chat;
 
@@ -37,6 +38,11 @@ export function ChatHeader({ startCall }: ChatHeaderProps = {}) {
         {selectedConversation && selectedConversation.type === 'DIRECT' && startCall && (
           <button className="icon-button" title="Video Call" onClick={startCall}>
             <Video size={18} />
+          </button>
+        )}
+        {selectedConversation && selectedConversation.type === 'DIRECT' && openDirectSettings && (
+          <button className="icon-button" title="Chat Settings" onClick={openDirectSettings}>
+            <Settings size={18} />
           </button>
         )}
         {selectedConversation && selectedConversation.type === 'GROUP' && (

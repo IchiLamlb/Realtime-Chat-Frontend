@@ -190,6 +190,18 @@ export const api = {
       token,
       body: JSON.stringify(payload),
     }),
+  updateConversationSettings: async (token: string, conversationId: string, payload: { theme?: string; backgroundColor?: string }) =>
+    request<Conversation>(`/api/v1/conversations/${conversationId}/settings`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify(payload),
+    }),
+  updateNickname: async (token: string, conversationId: string, targetUserId: string, nickname: string | null) =>
+    request<Conversation>(`/api/v1/conversations/${conversationId}/members/${targetUserId}/nickname`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify({ nickname }),
+    }),
   addMember: async (token: string, conversationId: string, userId: string) =>
     request<Conversation>(`/api/v1/conversations/${conversationId}/members`, {
       method: 'POST',

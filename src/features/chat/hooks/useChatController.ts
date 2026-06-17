@@ -467,6 +467,8 @@ export function useChatController(): ChatController {
       toggleGroupMember: directory.toggleGroupMember,
       searchGroupUsers: directory.searchGroupUsers,
       loadMoreGroupCandidates: directory.loadMoreGroupCandidates,
+      updateSettings: directory.updateSettings,
+      updateNickname: directory.updateNickname,
     },
     chat: {
       selectedConversation,

@@ -36,6 +36,8 @@ export function MessageItem({ message, index }: MessageItemProps) {
 
   const mine = message.senderId === me.id;
   const sender = sidebar.usersById.get(message.senderId);
+  const member = chat.selectedConversation?.members?.find((m) => m.userId === message.senderId);
+  const senderName = member?.nickname || sender?.displayName || 'Member';
   const metadata = message.metadata ?? {};
   const attachmentUrl = typeof metadata.url === 'string' ? metadata.url : '';
   const attachmentName = typeof metadata.originalName === 'string' ? metadata.originalName : message.content;
@@ -56,16 +58,16 @@ export function MessageItem({ message, index }: MessageItemProps) {
       className={`message-row ${mine ? 'mine' : ''} ${isPrevSame ? 'consecutive' : ''}`}
     >
       {!mine && !isPrevSame && (
-        <div className="message-avatar" title={sender?.displayName ?? 'Member'}>
+        <div className="message-avatar" title={senderName}>
           {sender?.avatarUrl ? (
-            <img src={sender.avatarUrl} alt={sender.displayName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+            <img src={sender.avatarUrl} alt={senderName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
           ) : (
-            initials(sender?.displayName ?? 'Member')
+            initials(senderName)
           )}
         </div>
       )}
       <div className="message-bubble-wrapper">
-        {!mine && !isPrevSame && <span className="message-sender-name">{sender?.displayName ?? 'Member'}</span>}
+        {!mine && !isPrevSame && <span className="message-sender-name">{senderName}</span>}
 
         <div className="message-bubble-container">
           <article className={`message-bubble ${mine ? 'mine' : ''} ${bubbleClass(isPrevSame, isNextSame)}`}>
