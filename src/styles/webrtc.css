@@ -1,0 +1,156 @@
+.webrtc-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+}
+
+.webrtc-video-container {
+  position: relative;
+  width: 90%;
+  max-width: 1200px;
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.webrtc-remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.webrtc-local-video-wrapper {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 240px;
+  aspect-ratio: 16 / 9;
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.webrtc-local-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror effect */
+}
+
+.webrtc-call-status-screen {
+  color: white;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.webrtc-call-status-screen h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.webrtc-pulse-text {
+  font-size: 1.5rem;
+  opacity: 0.8;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+}
+
+.webrtc-action-buttons {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.webrtc-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  color: white;
+  transition: transform 0.2s, background-color 0.2s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.webrtc-btn:hover {
+  transform: scale(1.1);
+}
+
+.webrtc-btn.accept {
+  background-color: #22c55e;
+}
+
+.webrtc-btn.accept:hover {
+  background-color: #16a34a;
+}
+
+.webrtc-btn.reject, .webrtc-btn.hangup {
+  background-color: #ef4444;
+}
+
+.webrtc-btn.reject:hover, .webrtc-btn.hangup:hover {
+  background-color: #dc2626;
+}
+
+.webrtc-controls {
+  margin-top: 32px;
+  display: flex;
+  gap: 16px;
+  background-color: rgba(30, 30, 30, 0.6);
+  padding: 16px 24px;
+  border-radius: 9999px;
+  backdrop-filter: blur(12px);
+}
+
+.webrtc-control-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  color: white;
+  background-color: rgba(60, 60, 60, 0.8);
+  transition: background-color 0.2s;
+}
+
+.webrtc-control-btn:hover {
+  background-color: rgba(80, 80, 80, 0.9);
+}
+
+.webrtc-control-btn.active {
+  background-color: rgba(239, 68, 68, 0.8);
+}
+
+.webrtc-control-btn.active:hover {
+  background-color: rgba(220, 38, 38, 0.9);
+}

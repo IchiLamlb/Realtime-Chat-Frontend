@@ -1,0 +1,40 @@
+:root {
+  color-scheme: light;
+  font-family: 'Space Grotesk', sans-serif;
+  --ink: #17120d;
+  --muted: #6f6256;
+  --paper: #fff7e9;
+  --panel: rgba(255, 250, 240, 0.78);
+  --line: rgba(43, 32, 24, 0.16);
+  --rust: #b84d2a;
+  --rust-dark: #73351e;
+  --olive: #6e7f35;
+  --blue: #1f5f70;
+  --gold: #f1b544;
+  --shadow: 0 24px 90px rgba(57, 36, 19, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 10% 10%, rgba(241, 181, 68, 0.48), transparent 28rem),
+    radial-gradient(circle at 90% 20%, rgba(31, 95, 112, 0.24), transparent 26rem),
+    linear-gradient(135deg, #fff2d6 0%, #f6dfbd 45%, #e8caa3 100%);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+

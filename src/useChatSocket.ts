@@ -1,6 +1,6 @@
 import { Client, type IMessage } from '@stomp/stompjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChatMessage, MessageReceipt, TypingEvent } from './types';
+import type { ChatMessage, MessageReceipt, TypingEvent, WebRTCSignalEvent } from './types';
 
 interface UseChatSocketOptions {
   conversationId: string | null;
@@ -8,6 +8,7 @@ interface UseChatSocketOptions {
   onMessage: (message: ChatMessage) => void;
   onReceipt: (receipt: MessageReceipt) => void;
   onTyping: (event: TypingEvent) => void;
+  onWebRTCSignal?: (event: WebRTCSignalEvent) => void;
 }
 
 function socketUrl() {
@@ -27,7 +28,11 @@ function isMessageReceipt(payload: unknown): payload is MessageReceipt {
   return Boolean(payload && typeof payload === 'object' && 'messageId' in payload && 'status' in payload);
 }
 
-export function useChatSocket({ conversationId, token, onMessage, onReceipt, onTyping }: UseChatSocketOptions) {
+function isWebRTCSignal(payload: unknown): payload is WebRTCSignalEvent {
+  return Boolean(payload && typeof payload === 'object' && 'type' in payload && ('OFFER' === (payload as any).type || 'ANSWER' === (payload as any).type || 'ICE_CANDIDATE' === (payload as any).type || 'HANGUP' === (payload as any).type || 'REJECT' === (payload as any).type));
+}
+
+export function useChatSocket({ conversationId, token, onMessage, onReceipt, onTyping, onWebRTCSignal }: UseChatSocketOptions) {
   const [connected, setConnected] = useState(false);
   const clientRef = useRef<Client | null>(null);
 
@@ -48,7 +53,7 @@ export function useChatSocket({ conversationId, token, onMessage, onReceipt, onT
       onConnect: () => {
         setConnected(true);
         client.subscribe(`/topic/conversations/${conversationId}`, (frame: IMessage) => {
-          const payload = JSON.parse(frame.body) as ChatMessage | MessageReceipt | TypingEvent;
+          const payload = JSON.parse(frame.body) as ChatMessage | MessageReceipt | TypingEvent | WebRTCSignalEvent;
           if (isChatMessage(payload)) {
             onMessage(payload);
             return;
@@ -59,6 +64,10 @@ export function useChatSocket({ conversationId, token, onMessage, onReceipt, onT
           }
           if (isTypingEvent(payload)) {
             onTyping(payload);
+            return;
+          }
+          if (isWebRTCSignal(payload)) {
+            onWebRTCSignal?.(payload);
           }
         });
       },
@@ -75,7 +84,7 @@ export function useChatSocket({ conversationId, token, onMessage, onReceipt, onT
       clientRef.current = null;
       setConnected(false);
     };
-  }, [conversationId, token, onMessage, onReceipt, onTyping]);
+  }, [conversationId, token, onMessage, onReceipt, onTyping, onWebRTCSignal]);
 
   const sendMessage = useCallback((payload: { conversationId: string; type: 'TEXT'; content: string; metadata: Record<string, unknown> }) => {
     clientRef.current?.publish({
@@ -112,8 +121,15 @@ export function useChatSocket({ conversationId, token, onMessage, onReceipt, onT
     });
   }, []);
 
+  const sendWebRTCSignal = useCallback((payload: { conversationId: string; type: string; payload: string }) => {
+    clientRef.current?.publish({
+      destination: '/app/chat.webrtc',
+      body: JSON.stringify(payload),
+    });
+  }, []);
+
   return useMemo(
-    () => ({ connected, sendMessage, sendTyping, sendDelivered, sendRead, sendReaction }),
-    [connected, sendDelivered, sendMessage, sendRead, sendTyping, sendReaction],
+    () => ({ connected, sendMessage, sendTyping, sendDelivered, sendRead, sendReaction, sendWebRTCSignal }),
+    [connected, sendDelivered, sendMessage, sendRead, sendTyping, sendReaction, sendWebRTCSignal],
   );
 }

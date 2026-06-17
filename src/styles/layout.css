@@ -1,0 +1,363 @@
+.shell {
+  width: min(1500px, calc(100vw - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 24px 0;
+  display: grid;
+  grid-template-columns: 0.75fr 1.65fr;
+  gap: 20px;
+}
+
+.hero-panel,
+.auth-card,
+.app-grid,
+.sidebar,
+.chat-panel,
+.tool-card {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+}
+
+.hero-panel {
+  position: sticky;
+  top: 24px;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+  border-radius: 36px;
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.hero-panel::after {
+  content: '';
+  position: absolute;
+  inset: auto -18% -22% 12%;
+  height: 46%;
+  border-radius: 999px 999px 0 0;
+  background: repeating-linear-gradient(90deg, rgba(184, 77, 42, 0.24) 0 14px, transparent 14px 28px);
+  transform: rotate(-8deg);
+}
+
+.brand-mark,
+.section-title,
+.live-pill,
+.wide-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-mark {
+  width: fit-content;
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: #fff9eb;
+  background: var(--ink);
+  font-weight: 700;
+}
+
+.hero-panel h1 {
+  position: relative;
+  z-index: 1;
+  margin: 42px 0 18px;
+  max-width: 520px;
+  font-family: 'Fraunces', serif;
+  font-size: clamp(3rem, 6vw, 5.8rem);
+  line-height: 0.88;
+  letter-spacing: -0.07em;
+}
+
+.hero-panel p {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.status-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 12px;
+}
+
+.status-grid div {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.status-grid span,
+.profile-row span,
+.conversation-list span,
+.message-meta,
+.eyebrow,
+.message small,
+.user-list small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.auth-card {
+  align-self: center;
+  max-width: 520px;
+  width: 100%;
+  justify-self: center;
+  border-radius: 34px;
+  padding: 28px;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 18px;
+  background: rgba(23, 18, 13, 0.08);
+  margin-bottom: 18px;
+}
+
+.mode-switch button,
+.conversation-list button,
+.user-list button {
+  border: 0;
+  text-align: left;
+  color: var(--ink);
+  background: transparent;
+}
+
+.mode-switch button {
+  padding: 12px;
+  border-radius: 14px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.mode-switch button.active,
+.conversation-list button.active {
+  background: #fff9ef;
+  box-shadow: 0 10px 26px rgba(57, 36, 19, 0.12);
+}
+
+.stack,
+.tool-card,
+.conversation-list {
+  display: grid;
+  gap: 14px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 13px 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.68);
+  outline: none;
+}
+
+input:focus {
+  border-color: rgba(184, 77, 42, 0.7);
+  box-shadow: 0 0 0 4px rgba(184, 77, 42, 0.12);
+}
+
+.primary,
+.inline-form button,
+.wide-button,
+.composer button {
+  border: 0;
+  border-radius: 16px;
+  padding: 13px 16px;
+  color: #fff9eb;
+  background: var(--rust);
+  font-weight: 800;
+}
+
+.primary {
+  margin-top: 6px;
+}
+
+.link-button {
+  border: 0;
+  background: transparent;
+  color: #6f4325;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  height: calc(100vh - 48px);
+  min-height: calc(100vh - 48px);
+  border-radius: 36px;
+  overflow: hidden;
+}
+
+.sidebar {
+  box-shadow: none;
+  border-width: 0 1px 0 0;
+  border-radius: 0;
+  padding: 20px;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  background: rgba(255, 249, 239, 0.64);
+  overflow-y: auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.profile-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #fff9eb;
+  background: var(--blue);
+  font-weight: 900;
+}
+
+.icon-button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.tool-card {
+  box-shadow: none;
+  border-radius: 22px;
+  padding: 16px;
+}
+
+.section-title {
+  color: var(--rust-dark);
+  font-weight: 900;
+}
+
+.inline-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.user-list {
+  display: grid;
+  gap: 8px;
+}
+
+.user-list button,
+.conversation-list button {
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.user-list button {
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.wide-button {
+  justify-content: center;
+}
+
+.conversation-list {
+  margin-top: 4px;
+}
+
+.conversation-list button {
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.conversation-list-item-body,
+.chat-header-actions,
+.member-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conversation-list-item-body {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.chat-header-actions,
+.member-row-actions {
+  flex-shrink: 0;
+}
+
+.chat-panel {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.64), rgba(255, 246, 228, 0.42)),
+    radial-gradient(circle at 70% 0, rgba(110, 127, 53, 0.15), transparent 28rem);
+}
+
+.chat-header {
+  min-width: 0;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-header h2 {
+  margin: 4px 0 0;
+  font-family: 'Fraunces', serif;
+  font-size: clamp(1.7rem, 3vw, 2.8rem);
+  letter-spacing: -0.05em;
+}
+
+.live-pill {
+  padding: 10px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.46);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.live-pill.on {
+  color: #fff9eb;
+  background: var(--olive);
+}
+

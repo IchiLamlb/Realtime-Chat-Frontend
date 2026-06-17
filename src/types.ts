@@ -99,3 +99,11 @@ export interface Presence {
   status: UserStatus;
   lastSeenAt: string | null;
 }
+
+export interface WebRTCSignalEvent {
+  conversationId: string;
+  senderId: string;
+  type: 'OFFER' | 'ANSWER' | 'ICE_CANDIDATE' | 'HANGUP' | 'REJECT';
+  payload: string;
+  timestamp: string;
+}
