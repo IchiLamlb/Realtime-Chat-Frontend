@@ -14,7 +14,11 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="profile-row">
-        <div className="avatar">{initials(me.displayName)}</div>
+        {me.avatarUrl ? (
+          <img className="avatar" src={me.avatarUrl} alt={me.displayName} style={{ objectFit: 'cover' }} />
+        ) : (
+          <div className="avatar">{initials(me.displayName)}</div>
+        )}
         <div>
           <strong>{me.displayName}</strong>
           <span>@{me.username}</span>

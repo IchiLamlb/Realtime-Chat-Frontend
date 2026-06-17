@@ -57,7 +57,11 @@ export function MessageItem({ message, index }: MessageItemProps) {
     >
       {!mine && !isPrevSame && (
         <div className="message-avatar" title={sender?.displayName ?? 'Member'}>
-          {initials(sender?.displayName ?? 'Member')}
+          {sender?.avatarUrl ? (
+            <img src={sender.avatarUrl} alt={sender.displayName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+          ) : (
+            initials(sender?.displayName ?? 'Member')
+          )}
         </div>
       )}
       <div className="message-bubble-wrapper">

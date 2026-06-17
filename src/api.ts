@@ -50,6 +50,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return body.data;
 }
 
+let refreshPromise: Promise<AuthResponse | null> | null = null;
+
 async function refreshExpiredSession(): Promise<AuthResponse | null> {
   const session = loadSession();
   if (!session?.refreshToken) {
@@ -57,23 +59,33 @@ async function refreshExpiredSession(): Promise<AuthResponse | null> {
     return null;
   }
 
-  try {
-    const response = await request<AuthResponse>('/api/v1/auth/refresh-token', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken: session.refreshToken }),
-      skipRefresh: true,
-    });
-    saveSession(response.accessToken, response.refreshToken, response.user);
-    onSessionRefreshed?.({
-      token: response.accessToken,
-      refreshToken: response.refreshToken,
-      user: response.user,
-    });
-    return response;
-  } catch {
-    clearSession();
-    return null;
+  if (refreshPromise) {
+    return refreshPromise;
   }
+
+  refreshPromise = (async () => {
+    try {
+      const response = await request<AuthResponse>('/api/v1/auth/refresh-token', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken: session.refreshToken }),
+        skipRefresh: true,
+      });
+      saveSession(response.accessToken, response.refreshToken, response.user);
+      onSessionRefreshed?.({
+        token: response.accessToken,
+        refreshToken: response.refreshToken,
+        user: response.user,
+      });
+      return response;
+    } catch {
+      clearSession();
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 export const api = {
