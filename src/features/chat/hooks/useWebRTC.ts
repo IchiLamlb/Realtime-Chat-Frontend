@@ -10,6 +10,15 @@ const ICE_SERVERS = {
   ],
 };
 
+const formatCallDuration = (seconds: number) => {
+  if (seconds < 60) {
+    return `${seconds} giây`;
+  }
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 interface UseWebRTCOptions {
   me: User | null;
   webrtcSignalEvent: WebRTCSignalEvent | null;
@@ -17,6 +26,7 @@ interface UseWebRTCOptions {
   sendWebRTCSignal: (payload: { conversationId: string; type: string; payload: string }) => void;
   selectedConversationId: string | null;
   usersById: Map<string, User>;
+  onCallLog: (content: string) => void;
 }
 
 export function useWebRTC({
@@ -26,6 +36,7 @@ export function useWebRTC({
   sendWebRTCSignal,
   selectedConversationId,
   usersById,
+  onCallLog,
 }: UseWebRTCOptions) {
   const [callStatus, setCallStatus] = useState<CallStatus>('IDLE');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -35,7 +46,32 @@ export function useWebRTC({
   const remoteUserIdRef = useRef<string | null>(null);
   const peerConnection = useRef<RTCPeerConnection | null>(null);
 
+  const isCallerRef = useRef<boolean>(false);
+  const callConnectedTimeRef = useRef<number>(0);
+  const callStatusRef = useRef<CallStatus>('IDLE');
+
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
+  const logCall = useCallback(() => {
+    if (!isCallerRef.current) return;
+    
+    const prevStatus = callStatusRef.current;
+    if (prevStatus === 'IDLE') return;
+
+    let logContent = 'Cuộc gọi thoại bị nhỡ';
+    if (prevStatus === 'CONNECTED' && callConnectedTimeRef.current > 0) {
+      const durationSeconds = Math.max(0, Math.floor((Date.now() - callConnectedTimeRef.current) / 1000));
+      logContent = `Cuộc gọi thoại - ${formatCallDuration(durationSeconds)}`;
+    }
+
+    onCallLog(logContent);
+  }, [onCallLog]);
+
   const cleanup = useCallback(() => {
+    logCall();
+
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
     }
@@ -48,7 +84,8 @@ export function useWebRTC({
     setCallStatus('IDLE');
     setCallerName('');
     remoteUserIdRef.current = null;
-  }, [localStream]);
+    callConnectedTimeRef.current = 0;
+  }, [localStream, logCall]);
 
   const initPeerConnection = useCallback(() => {
     if (peerConnection.current) {
@@ -94,6 +131,9 @@ export function useWebRTC({
         payload: JSON.stringify(offer),
       });
 
+      isCallerRef.current = true;
+      callConnectedTimeRef.current = 0;
+
       setCallStatus('RINGING_OUT');
     } catch (err) {
       console.error('Error starting call:', err);
@@ -120,6 +160,7 @@ export function useWebRTC({
         payload: JSON.stringify(answer),
       });
 
+      callConnectedTimeRef.current = Date.now();
       setCallStatus('CONNECTED');
     } catch (err) {
       console.error('Error accepting call:', err);
@@ -179,6 +220,9 @@ export function useWebRTC({
           const caller = usersById.get(senderId);
           setCallerName(caller?.displayName || 'Someone');
           
+          isCallerRef.current = false;
+          callConnectedTimeRef.current = 0;
+
           const newPc = initPeerConnection();
           await newPc.setRemoteDescription(new RTCSessionDescription(data));
           setCallStatus('RINGING_IN');
@@ -187,6 +231,7 @@ export function useWebRTC({
         case 'ANSWER': {
           if (callStatus === 'RINGING_OUT' && pc) {
             await pc.setRemoteDescription(new RTCSessionDescription(data));
+            callConnectedTimeRef.current = Date.now();
             setCallStatus('CONNECTED');
           }
           break;

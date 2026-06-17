@@ -297,6 +297,17 @@ export function useConversationDirectory({
     }
   }
 
+  const moveConversationToTop = useCallback((conversationId: string) => {
+    setConversations((current) => {
+      const index = current.findIndex((c) => c.id === conversationId);
+      if (index <= 0) return current;
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      return [item, ...next];
+    });
+  }, []);
+
+
   return {
     conversations,
     selectedConversation,
@@ -330,5 +341,7 @@ export function useConversationDirectory({
     clearDirectory,
     updateSettings,
     updateNickname,
+    moveConversationToTop,
   };
 }
+

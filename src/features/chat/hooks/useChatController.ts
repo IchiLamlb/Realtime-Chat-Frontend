@@ -18,6 +18,7 @@ import { useConversationDirectory } from './useConversationDirectory';
 import { useGroupSettings } from './useGroupSettings';
 import { useProfileSettings } from './useProfileSettings';
 import { useVoiceRecorder } from './useVoiceRecorder';
+import { useWebRTC } from './useWebRTC';
 
 const MAX_ATTACHMENT_SIZE = 100 * 1024 * 1024;
 
@@ -35,6 +36,7 @@ export function useChatController(): ChatController {
     usersById,
     myGroupRole,
     refreshConversations,
+    moveConversationToTop,
   } = directory;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageDraft, setMessageDraft] = useState('');
@@ -65,7 +67,8 @@ export function useChatController(): ChatController {
       }
       return [...current, message];
     });
-  }, []);
+    moveConversationToTop(message.conversationId);
+  }, [moveConversationToTop]);
 
   const voiceRecorder = useVoiceRecorder({
     token,
@@ -423,6 +426,38 @@ export function useChatController(): ChatController {
     setStatus('Signed out');
   }
 
+  const onCallLog = useCallback(async (content: string) => {
+    if (!token || !selectedConversationId) return;
+
+    const payload = {
+      conversationId: selectedConversationId,
+      type: 'SYSTEM' as const,
+      content,
+      metadata: { systemType: 'CALL_LOG' },
+    };
+
+    if (socket.connected) {
+      socket.sendMessage(payload);
+    } else {
+      try {
+        const sent = await api.sendMessage(token, payload);
+        handleSocketMessage(sent);
+      } catch (caught) {
+        console.error('Failed to log call message:', caught);
+      }
+    }
+  }, [token, selectedConversationId, socket.connected, handleSocketMessage]);
+
+  const webrtc = useWebRTC({
+    me,
+    webrtcSignalEvent,
+    setWebrtcSignalEvent,
+    sendWebRTCSignal: socket.sendWebRTCSignal,
+    selectedConversationId,
+    usersById,
+    onCallLog,
+  });
+
   const activeTypers = [...typingUsers.keys()]
     .map((id) => usersById.get(id)?.displayName ?? 'Someone')
     .join(', ');
@@ -511,6 +546,8 @@ export function useChatController(): ChatController {
       webrtcSignalEvent,
       setWebrtcSignalEvent,
       sendWebRTCSignal: socket.sendWebRTCSignal,
+      onCallLog,
+      webrtc,
     },
     profile: profileSettings,
     group: groupSettings,

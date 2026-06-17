@@ -83,7 +83,16 @@ export function VideoCallModal({
           </>
         ) : (
           <div className="webrtc-call-status-screen">
-            {callStatus === 'RINGING_OUT' && <p className="webrtc-pulse-text">Calling...</p>}
+            {callStatus === 'RINGING_OUT' && (
+              <>
+                <p className="webrtc-pulse-text">Calling...</p>
+                <div className="webrtc-action-buttons" style={{ marginTop: '20px' }}>
+                  <button onClick={endCall} className="webrtc-btn reject" title="Hủy cuộc gọi">
+                    <PhoneOff size={32} />
+                  </button>
+                </div>
+              </>
+            )}
             {callStatus === 'RINGING_IN' && (
               <>
                 <h2>{callerName} is calling...</h2>

@@ -1,4 +1,4 @@
-import { CornerUpLeft, FileText, MoreHorizontal, Smile } from 'lucide-react';
+import { CornerUpLeft, FileText, MoreHorizontal, Smile, PhoneCall, PhoneMissed } from 'lucide-react';
 import type { ChatMessage } from '../../../types';
 import { AudioPlayer } from '../../../shared/components/AudioPlayer';
 import { formatClockTime, formatFileSize, initials } from '../../../shared/lib/formatters';
@@ -26,19 +26,70 @@ export function MessageItem({ message, index }: MessageItemProps) {
     return null;
   }
 
+  const mine = message.senderId === me.id;
+  const sender = sidebar.usersById.get(message.senderId);
+  const member = chat.selectedConversation?.members?.find((m) => m.userId === message.senderId);
+  const senderName = member?.nickname || sender?.displayName || 'Member';
+  const metadata = message.metadata ?? {};
+
   if (message.type === 'SYSTEM') {
+    if (metadata.systemType === 'CALL_LOG') {
+      const isMissed = message.content.includes('nhỡ') || message.content.includes('không thành công');
+      const displayTime = formatClockTime(message.createdAt);
+      
+      return (
+        <div
+          id={`message-${message.id}`}
+          className={`message-row ${mine ? 'mine' : ''}`}
+        >
+          {!mine && (
+            <div className="message-avatar" title={senderName}>
+              {sender?.avatarUrl ? (
+                <img src={sender.avatarUrl} alt={senderName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                initials(senderName)
+              )}
+            </div>
+          )}
+          <div className="message-bubble-wrapper">
+            {!mine && <span className="message-sender-name">{senderName}</span>}
+            
+            <div className="system-call-log-card">
+              <div className="system-call-log-body">
+                <div className={`system-call-log-icon ${isMissed ? 'missed' : 'connected'}`}>
+                  {isMissed ? <PhoneMissed size={20} /> : <PhoneCall size={20} />}
+                </div>
+                <div className="system-call-log-text">
+                  <strong className="system-call-log-title">
+                    {isMissed ? 'Đã nhỡ cuộc gọi thoại' : 'Cuộc gọi thoại'}
+                  </strong>
+                  {!isMissed && (
+                    <span className="system-call-log-duration">
+                      {message.content.replace('Cuộc gọi thoại - ', '')}
+                    </span>
+                  )}
+                  <span className="system-call-log-time">{displayTime}</span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="system-call-log-btn" 
+                onClick={() => void chat.webrtc.startCall()}
+              >
+                Gọi lại
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="system-message-row">
         <span>{message.content}</span>
       </div>
     );
   }
-
-  const mine = message.senderId === me.id;
-  const sender = sidebar.usersById.get(message.senderId);
-  const member = chat.selectedConversation?.members?.find((m) => m.userId === message.senderId);
-  const senderName = member?.nickname || sender?.displayName || 'Member';
-  const metadata = message.metadata ?? {};
   const attachmentUrl = typeof metadata.url === 'string' ? metadata.url : '';
   const attachmentName = typeof metadata.originalName === 'string' ? metadata.originalName : message.content;
   const attachmentSize = formatFileSize(metadata.size);

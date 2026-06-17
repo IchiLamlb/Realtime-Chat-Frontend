@@ -103,6 +103,17 @@ export interface ChatController {
     webrtcSignalEvent: WebRTCSignalEvent | null;
     setWebrtcSignalEvent: Dispatch<SetStateAction<WebRTCSignalEvent | null>>;
     sendWebRTCSignal: (payload: { conversationId: string; type: string; payload: string }) => void;
+    onCallLog: (content: string) => Promise<void>;
+    webrtc: {
+      callStatus: any;
+      localStream: MediaStream | null;
+      remoteStream: MediaStream | null;
+      callerName: string;
+      startCall: () => Promise<void>;
+      acceptCall: () => Promise<void>;
+      rejectCall: () => void;
+      endCall: () => void;
+    };
   };
   profile: {
     show: boolean;
