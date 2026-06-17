@@ -1,4 +1,4 @@
-import { LogOut, MessageCircle, Plus, Search, Settings, Users } from 'lucide-react';
+import { Bot, LogOut, MessageCircle, Plus, Search, Settings, Users } from 'lucide-react';
 import { initials } from '../../../shared/lib/formatters';
 import { conversationLabel, directConversationPresence } from '../lib/conversations';
 import { useChatControllerContext } from '../model/useChatControllerContext';
@@ -32,6 +32,10 @@ export function Sidebar() {
           <Search size={16} />
           Find people
         </div>
+        <button className="assistant-open-button" type="button" onClick={() => void sidebar.openAssistant()}>
+          <Bot size={16} />
+          Realtime Assistant
+        </button>
         <div className="inline-form">
           <input
             placeholder="username/email"

@@ -45,6 +45,7 @@ export interface ChatController {
     presenceMap: Map<string, string>;
     searchUsers: () => Promise<void>;
     createDirect: (userId: string) => Promise<void>;
+    openAssistant: () => Promise<void>;
     createGroup: () => Promise<void>;
   };
   chat: {

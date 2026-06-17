@@ -453,6 +453,7 @@ export function useChatController(): ChatController {
       presenceMap: directory.presenceMap,
       searchUsers: directory.searchUsers,
       createDirect: directory.createDirect,
+      openAssistant: directory.openAssistant,
       createGroup: directory.createGroup,
     },
     chat: {

@@ -122,6 +122,11 @@ export const api = {
       token,
       body: JSON.stringify(payload),
     }),
+  assistantConversation: async (token: string) =>
+    request<Conversation>('/api/v1/conversations/assistant', {
+      method: 'POST',
+      token,
+    }),
   messages: async (token: string, conversationId: string, limit = 50, cursor?: string) =>
     request<MessageHistoryResponse>(
       `/api/v1/conversations/${conversationId}/messages?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../../api';
 import type { Conversation, User } from '../../../types';
+import { assistantUsername } from '../lib/conversations';
 
 interface UseConversationDirectoryOptions {
   token: string | null;
@@ -85,7 +86,7 @@ export function useConversationDirectory({
       const uniqueUserIds = new Set<string>();
       conversations.forEach((conversation) => {
         conversation.members?.forEach((member) => {
-          if (member.userId !== me?.id) {
+          if (member.userId !== me?.id && member.username !== assistantUsername) {
             uniqueUserIds.add(member.userId);
           }
         });
@@ -145,6 +146,25 @@ export function useConversationDirectory({
     setStatus('Direct conversation ready');
   }
 
+  async function openAssistant() {
+    if (!token) {
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    try {
+      const conversation = await api.assistantConversation(token);
+      await refreshConversations();
+      setSelectedConversationId(conversation.id);
+      setStatus('Assistant conversation ready');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Assistant conversation failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function createGroup() {
     if (!token || !groupName.trim() || users.length === 0) {
       return;
@@ -184,6 +204,7 @@ export function useConversationDirectory({
     refreshConversations,
     searchUsers,
     createDirect,
+    openAssistant,
     createGroup,
     clearDirectory,
   };
