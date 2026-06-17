@@ -156,6 +156,17 @@ export const api = {
       method: 'POST',
       token,
     }),
+  react: async (token: string, messageId: string, emoji: string | null) =>
+    request<ChatMessage>(`/api/v1/messages/${messageId}/react`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ messageId, emoji }),
+    }),
+  deleteMessage: async (token: string, messageId: string) =>
+    request<ChatMessage>(`/api/v1/messages/${messageId}`, {
+      method: 'DELETE',
+      token,
+    }),
   updateGroup: async (token: string, conversationId: string, payload: { name: string; avatarUrl?: string | null }) =>
     request<Conversation>(`/api/v1/conversations/${conversationId}`, {
       method: 'PATCH',

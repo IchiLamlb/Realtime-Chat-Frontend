@@ -54,6 +54,11 @@ Implemented screens:
 - Conversation list
 - Message history
 - Send text message
+- Send file, image, and voice attachment messages
+- Hover message action bar with reply, emoji, and more menu controls
+- Reply preview stored in outgoing message `metadata.replyTo`
+- Emoji reactions through REST/WebSocket
+- Delete-for-me on the client and delete-for-everyone through `DELETE /api/v1/messages/{id}`
 - STOMP subscription to `/topic/conversations/{conversationId}`
 - Typing event send/receive
 

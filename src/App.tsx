@@ -1,12 +1,64 @@
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, FileText, LogOut, MessageCircle, Paperclip, Plus, Radio, Search, Send, Settings, Sparkles, Users } from 'lucide-react';
+import { CornerUpLeft, Eye, EyeOff, FileText, LogOut, MessageCircle, MoreHorizontal, Paperclip, Plus, Radio, Search, Send, Settings, Smile, Sparkles, Users, Play, Pause, Mic, Trash2, X } from 'lucide-react';
 import { api, setSessionRefreshedHandler } from './api';
 import { clearSession, loadSession, saveSession } from './storage';
 import type { ChatMessage, Conversation, MessageReceipt, TypingEvent, User } from './types';
 import { useChatSocket } from './useChatSocket';
 
+const EMOJI_CATEGORIES = [
+  {
+    id: 'smileys',
+    name: 'Mặt cười & Cảm xúc',
+    icon: '😃',
+    emojis: ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😋','😛','😜','🤪','😎','🥳','😏','😒','😔','😢','😭','😡','🤯','😳','😱','🥱','😴','🫠','👀']
+  },
+  {
+    id: 'gestures',
+    name: 'Cử chỉ & Cơ thể',
+    icon: '👍',
+    emojis: ['👋','👌','🤌','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','👇','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','💪','🧠','🫀']
+  },
+  {
+    id: 'animals',
+    name: 'Động vật & Tự nhiên',
+    icon: '🐼',
+    emojis: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦅','🦉','🐝','🐛','🦋','🐢','🐍','🐙','🐠','🐬','🐳','🌵','🎄','🌲','🌳','🌴','🌱','☘️','🍀','🍁','🍂','🍃']
+  },
+  {
+    id: 'food',
+    name: 'Đồ ăn & Thức uống',
+    icon: '🍔',
+    emojis: ['🍏','🍊','🍌','🍉','🍇','🍓','🍒','🍑','🥭','🍍','🥥','🍅','🍆','🥑','🥦','🌽','🥕','🍞','🧀','🍖','🍗','🥩','🍔','🍟','🍕','🌭','🍳','🥘','🍲','🥣','🥗','🍿','🍣','cookie','🍩','🍰','🍫','🍬','☕','🍵','🍺','🍷']
+  },
+  {
+    id: 'activities',
+    name: 'Hoạt động & Thể thao',
+    icon: '⚽',
+    emojis: ['⚽','🏀','🏈','⚾','🎾','🎱','🏓','⛳','🎣','🥊','🥋','🛹','🚴','🏆','🥇','🥈','🥉','🎖️','🎟️','🎭','🎨','🎬','🎤','🎧','🎮','🎲','🧩','🎳']
+  },
+  {
+    id: 'travel',
+    name: 'Du lịch & Địa điểm',
+    icon: '🚗',
+    emojis: ['🚗','🚕','🚙','🚌','🚒','🚐','🚚','🚜','🛵','🚲','🚞','✈️','🛫','🛬','🛸','🚁','🛶','⛵','🚢','⚓','🗺️','🗼','🗽','🎡','🎢','🌋','🗻','🏖️','🏡','🏢','🏰','💒']
+  },
+  {
+    id: 'objects',
+    name: 'Đồ vật & Biểu tượng',
+    icon: '💡',
+    emojis: ['⌚','📱','💻','⌨️','🖱️','📷','📸','📞','⏰','⏳','💡','🔦','🕯️','🧪','🔬','📡','💉','💊','🩹','🔑','🗝️','🔨','🪓','🔫','🛡️','🔧','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','🎉','💯','✅','❌','⚠️']
+  }
+];
+
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
 const MAX_ATTACHMENT_SIZE = 100 * 1024 * 1024;
+
+interface ReplyPreview {
+  id: string;
+  senderName: string;
+  content: string;
+  type: ChatMessage['type'];
+}
 
 function initials(name: string) {
   if (!name) return '?';
@@ -33,6 +85,37 @@ function formatFileSize(value: unknown) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function messagePreview(message: ChatMessage) {
+  if (message.status === 'DELETED') {
+    return 'Tin nhắn đã bị xóa';
+  }
+  if (message.type === 'IMAGE') {
+    return message.content || 'Hình ảnh';
+  }
+  if (message.type === 'FILE') {
+    return message.content || 'Tệp đính kèm';
+  }
+  return message.content;
+}
+
+function parseReplyPreview(value: unknown): ReplyPreview | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const reply = value as Partial<ReplyPreview>;
+  if (typeof reply.id !== 'string' || typeof reply.senderName !== 'string') {
+    return null;
+  }
+
+  return {
+    id: reply.id,
+    senderName: reply.senderName,
+    content: typeof reply.content === 'string' ? reply.content : '',
+    type: reply.type ?? 'TEXT',
+  };
+}
+
 function renderStatus(status: ChatMessage['status']) {
   switch (status) {
     case 'SENT':
@@ -44,6 +127,90 @@ function renderStatus(status: ChatMessage['status']) {
     default:
       return null;
   }
+}
+
+interface AudioPlayerProps {
+  src: string;
+}
+
+function AudioPlayer({ src }: AudioPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(() => {});
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current) return;
+    setCurrentTime(audioRef.current.currentTime);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (!audioRef.current) return;
+    if (isFinite(audioRef.current.duration)) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleSeek = (e: ChangeEvent<HTMLInputElement>) => {
+    if (!audioRef.current) return;
+    const time = Number(e.target.value);
+    audioRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
+
+  const formatAudioTime = (time: number) => {
+    if (isNaN(time) || !isFinite(time)) return '0:00';
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="custom-audio-player">
+      <audio
+        ref={audioRef}
+        src={src}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onDurationChange={handleLoadedMetadata}
+        onEnded={handleAudioEnded}
+        preload="metadata"
+      />
+      <button type="button" className="audio-play-btn" onClick={togglePlay}>
+        {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+      </button>
+      <div className="audio-progress-container">
+        <input
+          type="range"
+          min={0}
+          max={duration || 100}
+          value={currentTime}
+          onChange={handleSeek}
+          className="audio-seeker"
+        />
+        <div className="audio-time-row">
+          <span>{formatAudioTime(currentTime)}</span>
+          <span>{formatAudioTime(duration)}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function conversationLabel(conversation: Conversation, usersById: Map<string, User>, me: User | null) {
@@ -90,6 +257,11 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, number>>(new Map());
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const prevConversationIdRef = useRef<string | null>(null);
@@ -111,6 +283,13 @@ export default function App() {
     avatarUrl: '',
     bio: '',
   });
+
+  const [activeReactionPickerMessageId, setActiveReactionPickerMessageId] = useState<string | null>(null);
+  const [activeMessageMenuId, setActiveMessageMenuId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyPreview | null>(null);
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set());
+  const [showFullPicker, setShowFullPicker] = useState(false);
+  const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
 
   // Group modal states
   const [showGroupModal, setShowGroupModal] = useState(false);
@@ -379,6 +558,24 @@ export default function App() {
     return () => window.clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!activeReactionPickerMessageId && !activeMessageMenuId) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.reaction-picker-popover') && !target.closest('.reaction-trigger-btn')) {
+        setActiveReactionPickerMessageId(null);
+        setShowFullPicker(false);
+      }
+      if (!target.closest('.message-more-menu') && !target.closest('.message-menu-trigger')) {
+        setActiveMessageMenuId(null);
+      }
+    };
+
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [activeReactionPickerMessageId, activeMessageMenuId]);
+
   const refreshConversations = useCallback(async () => {
     if (!token) {
       return;
@@ -518,10 +715,11 @@ export default function App() {
       conversationId: selectedConversationId,
       type: 'TEXT' as const,
       content: messageDraft.trim(),
-      metadata: {},
+      metadata: replyingTo ? { replyTo: replyingTo } : {},
     };
 
     setMessageDraft('');
+    setReplyingTo(null);
 
     if (socket.connected) {
       socket.sendMessage(payload);
@@ -533,6 +731,89 @@ export default function App() {
       handleSocketMessage(sent);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Send failed');
+    }
+  }
+
+  async function handleReact(messageId: string, emoji: string) {
+    if (!token) return;
+
+    // Optimistic UI update
+    setMessages((current) =>
+      current.map((msg) => {
+        if (msg.id !== messageId) return msg;
+
+        const currentReactions = msg.reactions || [];
+        const existingReactionIndex = currentReactions.findIndex((r) => r.userId === me?.id);
+
+        let newReactions = [...currentReactions];
+        if (existingReactionIndex >= 0) {
+          const existing = currentReactions[existingReactionIndex];
+          if (existing.emoji === emoji) {
+            newReactions.splice(existingReactionIndex, 1);
+          } else {
+            newReactions[existingReactionIndex] = {
+              ...existing,
+              emoji: emoji
+            };
+          }
+        } else if (me) {
+          newReactions.push({
+            userId: me.id,
+            username: me.username,
+            displayName: me.displayName,
+            avatarUrl: me.avatarUrl,
+            emoji: emoji
+          });
+        }
+
+        return { ...msg, reactions: newReactions };
+      })
+    );
+
+    if (socket.connected) {
+      socket.sendReaction(messageId, emoji);
+      return;
+    }
+
+    try {
+      const updated = await api.react(token, messageId, emoji);
+      handleSocketMessage(updated);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to react');
+    }
+  }
+
+  function handleStartReply(message: ChatMessage) {
+    const sender = usersById.get(message.senderId);
+    setReplyingTo({
+      id: message.id,
+      senderName: sender?.displayName ?? 'Member',
+      content: messagePreview(message),
+      type: message.type,
+    });
+    setActiveMessageMenuId(null);
+  }
+
+  function handleDeleteForMe(messageId: string) {
+    setHiddenMessageIds((current) => new Set(current).add(messageId));
+    setActiveMessageMenuId(null);
+    if (replyingTo?.id === messageId) {
+      setReplyingTo(null);
+    }
+  }
+
+  async function handleDeleteForEveryone(messageId: string) {
+    if (!token) return;
+
+    setActiveMessageMenuId(null);
+    try {
+      const deleted = await api.deleteMessage(token, messageId);
+      handleSocketMessage(deleted);
+      if (replyingTo?.id === messageId) {
+        setReplyingTo(null);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to delete message');
     }
   }
 
@@ -565,6 +846,120 @@ export default function App() {
       setAttachmentUploading(false);
     }
   }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      } catch (e) {
+        recorder = new MediaRecorder(stream);
+      }
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorder.start(10);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      if (recordingTimerRef.current) {
+        window.clearInterval(recordingTimerRef.current);
+      }
+      recordingTimerRef.current = window.setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+      
+      setStatus('Recording...');
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not access microphone');
+    }
+  }
+
+  async function stopRecording(shouldSend: boolean) {
+    if (!mediaRecorderRef.current || !isRecording) {
+      return;
+    }
+
+    if (recordingTimerRef.current) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    const recorder = mediaRecorderRef.current;
+    const stopPromise = new Promise<void>((resolve) => {
+      recorder.onstop = () => {
+        recorder.stream.getTracks().forEach((track) => track.stop());
+        resolve();
+      };
+    });
+
+    recorder.stop();
+    await stopPromise;
+
+    setIsRecording(false);
+    setStatus('Ready');
+
+    if (shouldSend) {
+      const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+      if (audioBlob.size === 0) {
+        setError('Recording is empty');
+        return;
+      }
+      
+      const fileExtension = recorder.mimeType?.includes('ogg') ? 'ogg' : recorder.mimeType?.includes('wav') ? 'wav' : 'webm';
+      const file = new File([audioBlob], `voice-message-${Date.now()}.${fileExtension}`, {
+        type: audioBlob.type,
+      });
+
+      if (!token || !selectedConversationId) {
+        return;
+      }
+
+      setAttachmentUploading(true);
+      setError(null);
+      try {
+        const sent = await api.sendAttachment(token, {
+          conversationId: selectedConversationId,
+          file,
+        });
+        handleSocketMessage(sent);
+        setStatus('Voice message sent');
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Failed to send voice message');
+      } finally {
+        setAttachmentUploading(false);
+      }
+    }
+    
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+  }
+
+  function formatDuration(seconds: number) {
+    const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const ss = String(seconds % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  }
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        window.clearInterval(recordingTimerRef.current);
+      }
+    };
+  }, []);
 
   function handleDraft(value: string) {
     setMessageDraft(value);
@@ -718,6 +1113,11 @@ export default function App() {
   const activeTypers = [...typingUsers.keys()]
     .map((id) => usersById.get(id)?.displayName ?? 'Someone')
     .join(', ');
+
+  const visibleMessages = useMemo(
+    () => messages.filter((message) => !hiddenMessageIds.has(message.id)),
+    [hiddenMessageIds, messages],
+  );
 
   return (
     <main className="shell">
@@ -995,8 +1395,8 @@ export default function App() {
                 </div>
               )}
               {loading && messages.length === 0 && <div className="empty-state">Loading...</div>}
-              {!loading && messages.length === 0 && <div className="empty-state">No messages yet. Start the thread.</div>}
-              {messages.map((message, index) => {
+              {!loading && visibleMessages.length === 0 && <div className="empty-state">No messages yet. Start the thread.</div>}
+              {visibleMessages.map((message, index) => {
                 if (message.type === 'SYSTEM') {
                   return (
                     <div key={message.id} className="system-message-row">
@@ -1011,9 +1411,12 @@ export default function App() {
                 const attachmentUrl = typeof metadata.url === 'string' ? metadata.url : '';
                 const attachmentName = typeof metadata.originalName === 'string' ? metadata.originalName : message.content;
                 const attachmentSize = formatFileSize(metadata.size);
+                const contentType = typeof metadata.contentType === 'string' ? metadata.contentType : '';
+                const replyTo = parseReplyPreview(metadata.replyTo);
+                const deleted = message.status === 'DELETED';
                 
-                const prevMessage = index > 0 ? messages[index - 1] : null;
-                const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+                const prevMessage = index > 0 ? visibleMessages[index - 1] : null;
+                const nextMessage = index < visibleMessages.length - 1 ? visibleMessages[index + 1] : null;
 
                 const isPrevSame = prevMessage && 
                   prevMessage.senderId === message.senderId && 
@@ -1033,8 +1436,16 @@ export default function App() {
                   bubbleClass = 'bubble-single';
                 }
 
+                const msgReactions = message.reactions || [];
+                const reactionsMap = new Map<string, typeof msgReactions>();
+                msgReactions.forEach((r) => {
+                  const list = reactionsMap.get(r.emoji) || [];
+                  list.push(r);
+                  reactionsMap.set(r.emoji, list);
+                });
+
                 return (
-                  <div key={message.id} className={`message-row ${mine ? 'mine' : ''} ${isPrevSame ? 'consecutive' : ''}`}>
+                  <div id={`message-${message.id}`} key={message.id} className={`message-row ${mine ? 'mine' : ''} ${isPrevSame ? 'consecutive' : ''}`}>
                     {!mine && !isPrevSame && (
                       <div className="message-avatar" title={sender?.displayName ?? 'Member'}>
                         {initials(sender?.displayName ?? 'Member')}
@@ -1044,30 +1455,201 @@ export default function App() {
                       {!mine && !isPrevSame && (
                         <span className="message-sender-name">{sender?.displayName ?? 'Member'}</span>
                       )}
-                      <article className={`message-bubble ${mine ? 'mine' : ''} ${bubbleClass}`}>
-                        {message.type === 'IMAGE' && attachmentUrl ? (
-                          <a className="image-attachment" href={attachmentUrl} target="_blank" rel="noreferrer">
-                            <img src={attachmentUrl} alt={attachmentName} />
-                            {message.content && message.content !== attachmentName && (
-                              <span className="message-content">{message.content}</span>
-                            )}
-                          </a>
-                        ) : message.type === 'FILE' && attachmentUrl ? (
-                          <a className="file-attachment" href={attachmentUrl} target="_blank" rel="noreferrer" download={attachmentName}>
-                            <FileText size={22} />
-                            <span>
-                              <strong>{attachmentName}</strong>
-                              {attachmentSize && <small>{attachmentSize}</small>}
-                            </span>
-                          </a>
-                        ) : (
-                          <p className="message-content">{message.content}</p>
+                      
+                      <div className="message-bubble-container">
+                        <article className={`message-bubble ${mine ? 'mine' : ''} ${bubbleClass}`}>
+                          {replyTo && (
+                            <button
+                              type="button"
+                              className="message-reply-preview"
+                              onClick={() => document.getElementById(`message-${replyTo.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                            >
+                              <strong>{replyTo.senderName}</strong>
+                              <span>{replyTo.content || (replyTo.type === 'IMAGE' ? 'Hình ảnh' : 'Tệp đính kèm')}</span>
+                            </button>
+                          )}
+                          {deleted ? (
+                            <p className="message-content deleted-message">Tin nhắn đã bị xóa</p>
+                          ) : message.type === 'IMAGE' && attachmentUrl ? (
+                            <a className="image-attachment" href={attachmentUrl} target="_blank" rel="noreferrer">
+                              <img src={attachmentUrl} alt={attachmentName} />
+                              {message.content && message.content !== attachmentName && (
+                                <span className="message-content">{message.content}</span>
+                              )}
+                            </a>
+                          ) : message.type === 'FILE' && attachmentUrl ? (
+                            contentType.startsWith('audio/') ? (
+                              <AudioPlayer src={attachmentUrl} />
+                            ) : (
+                              <a className="file-attachment" href={attachmentUrl} target="_blank" rel="noreferrer" download={attachmentName}>
+                                <FileText size={22} />
+                                <span>
+                                  <strong>{attachmentName}</strong>
+                                  {attachmentSize && <small>{attachmentSize}</small>}
+                                </span>
+                              </a>
+                            )
+                          ) : (
+                            <p className="message-content">{message.content}</p>
+                          )}
+                          <div className="message-info">
+                            <time className="message-time">{formatTime(message.createdAt)}</time>
+                            {mine && renderStatus(message.status)}
+                          </div>
+                        </article>
+
+                        {!deleted && (
+                          <div className={`message-actions ${activeMessageMenuId === message.id || activeReactionPickerMessageId === message.id ? 'active' : ''}`}>
+                            <button
+                              type="button"
+                              className="message-action-btn"
+                              title="Trả lời"
+                              onClick={() => handleStartReply(message)}
+                            >
+                              <CornerUpLeft size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              className="message-action-btn reaction-trigger-btn"
+                              title="Thả cảm xúc"
+                              onClick={() => {
+                                if (activeReactionPickerMessageId === message.id) {
+                                  setActiveReactionPickerMessageId(null);
+                                  setShowFullPicker(false);
+                                } else {
+                                  setActiveReactionPickerMessageId(message.id);
+                                  setActiveMessageMenuId(null);
+                                  setShowFullPicker(false);
+                                  setActiveCategoryIndex(0);
+                                }
+                              }}
+                            >
+                              <Smile size={16} />
+                            </button>
+                            <div className="message-menu-wrap">
+                              <button
+                                type="button"
+                                className="message-action-btn message-menu-trigger"
+                                title="Tùy chọn"
+                                onClick={() => {
+                                  setActiveMessageMenuId(activeMessageMenuId === message.id ? null : message.id);
+                                  setActiveReactionPickerMessageId(null);
+                                  setShowFullPicker(false);
+                                }}
+                              >
+                                <MoreHorizontal size={17} />
+                              </button>
+                              {activeMessageMenuId === message.id && (
+                                <div className="message-more-menu">
+                                  <button type="button" onClick={() => handleDeleteForMe(message.id)}>
+                                    Xóa phía mình
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="danger"
+                                    disabled={!mine}
+                                    title={mine ? 'Xóa tin nhắn với mọi người' : 'Chỉ người gửi mới xóa được với tất cả'}
+                                    onClick={() => void handleDeleteForEveryone(message.id)}
+                                  >
+                                    Xóa tất cả
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         )}
-                        <div className="message-info">
-                          <time className="message-time">{formatTime(message.createdAt)}</time>
-                          {mine && renderStatus(message.status)}
+
+                        {activeReactionPickerMessageId === message.id && (
+                          <div className="reaction-picker-popover">
+                            <div className="quick-reactions">
+                              {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => {
+                                const userReaction = msgReactions.find((r) => r.userId === me?.id);
+                                const isCurrent = userReaction?.emoji === emoji;
+                                return (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    className={`picker-emoji-btn ${isCurrent ? 'active' : ''}`}
+                                    onClick={() => {
+                                      void handleReact(message.id, emoji);
+                                      setActiveReactionPickerMessageId(null);
+                                      setShowFullPicker(false);
+                                    }}
+                                  >
+                                    {emoji}
+                                  </button>
+                                );
+                              })}
+                              <button
+                                type="button"
+                                className={`picker-expand-btn ${showFullPicker ? 'active' : ''}`}
+                                title="Thêm cảm xúc khác"
+                                onClick={() => setShowFullPicker(!showFullPicker)}
+                              >
+                                ＋
+                              </button>
+                            </div>
+
+                            {showFullPicker && (
+                              <div className="full-emoji-picker">
+                                <div className="picker-tabs">
+                                  {EMOJI_CATEGORIES.map((cat, idx) => (
+                                    <button
+                                      key={cat.id}
+                                      type="button"
+                                      className={`picker-tab-btn ${activeCategoryIndex === idx ? 'active' : ''}`}
+                                      title={cat.name}
+                                      onClick={() => setActiveCategoryIndex(idx)}
+                                    >
+                                      {cat.icon}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="picker-emojis">
+                                  {EMOJI_CATEGORIES[activeCategoryIndex].emojis.map((emoji) => {
+                                    const userReaction = msgReactions.find((r) => r.userId === me?.id);
+                                    const isCurrent = userReaction?.emoji === emoji;
+                                    return (
+                                      <button
+                                        key={emoji}
+                                        type="button"
+                                        className={`picker-emoji-btn ${isCurrent ? 'active' : ''}`}
+                                        onClick={() => {
+                                          void handleReact(message.id, emoji);
+                                          setActiveReactionPickerMessageId(null);
+                                          setShowFullPicker(false);
+                                        }}
+                                      >
+                                        {emoji}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {!deleted && reactionsMap.size > 0 && (
+                        <div className={`message-reactions ${mine ? 'mine' : ''}`}>
+                          {[...reactionsMap.entries()].map(([emoji, list]) => {
+                            const hasReacted = list.some((r) => r.userId === me?.id);
+                            const names = list.map((r) => r.displayName).join(', ');
+                            return (
+                              <button
+                                key={emoji}
+                                className={`reaction-badge ${hasReacted ? 'reacted' : ''}`}
+                                title={names}
+                                onClick={() => void handleReact(message.id, emoji)}
+                              >
+                                <span className="reaction-emoji">{emoji}</span>
+                                <span className="reaction-count">{list.length}</span>
+                              </button>
+                            );
+                          })}
                         </div>
-                      </article>
+                      )}
                     </div>
                   </div>
                 );
@@ -1077,35 +1659,81 @@ export default function App() {
 
             <div className="typing-line">{activeTypers ? `${activeTypers} is typing...` : status}</div>
 
-            <form className="composer" onSubmit={sendMessage}>
-              <button
-                type="button"
-                className="attach-button"
-                title="Attach file"
-                disabled={!selectedConversationId || attachmentUploading}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip size={18} />
-              </button>
-              <input
-                ref={fileInputRef}
-                className="file-input"
-                type="file"
-                accept="image/*,*"
-                onChange={handleAttachmentSelected}
-                disabled={!selectedConversationId || attachmentUploading}
-              />
-              <input
-                placeholder={selectedConversationId ? 'Write a message...' : 'Choose or create a conversation first'}
-                value={messageDraft}
-                onChange={(event) => handleDraft(event.target.value)}
-                disabled={!selectedConversationId}
-              />
-              <button disabled={!selectedConversationId || !messageDraft.trim() || attachmentUploading}>
-                <Send size={18} />
-                Send
-              </button>
-            </form>
+            {isRecording ? (
+              <div className="composer recording-mode">
+                <button
+                  type="button"
+                  className="recording-cancel-btn"
+                  title="Hủy ghi âm"
+                  onClick={() => void stopRecording(false)}
+                >
+                  <Trash2 size={18} />
+                </button>
+                <div className="recording-status">
+                  <span className="recording-indicator" />
+                  <span className="recording-timer">{formatDuration(recordingDuration)}</span>
+                </div>
+                <button
+                  type="button"
+                  className="recording-send-btn animate-pulse"
+                  title="Gửi ghi âm"
+                  onClick={() => void stopRecording(true)}
+                  disabled={attachmentUploading}
+                >
+                  {attachmentUploading ? 'Sending...' : <Send size={18} />}
+                  Gửi
+                </button>
+              </div>
+            ) : (
+              <form className="composer" onSubmit={sendMessage}>
+                {replyingTo && (
+                  <div className="composer-reply-preview">
+                    <div>
+                      <strong>Đang trả lời {replyingTo.senderName}</strong>
+                      <span>{replyingTo.content || (replyingTo.type === 'IMAGE' ? 'Hình ảnh' : 'Tệp đính kèm')}</span>
+                    </div>
+                    <button type="button" title="Hủy trả lời" onClick={() => setReplyingTo(null)}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="attach-button"
+                  title="Attach file"
+                  disabled={!selectedConversationId || attachmentUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="attach-button mic-button"
+                  title="Ghi âm"
+                  disabled={!selectedConversationId || attachmentUploading}
+                  onClick={() => void startRecording()}
+                >
+                  <Mic size={18} />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  className="file-input"
+                  type="file"
+                  onChange={handleAttachmentSelected}
+                  disabled={!selectedConversationId || attachmentUploading}
+                />
+                <input
+                  placeholder={selectedConversationId ? 'Write a message...' : 'Choose or create a conversation first'}
+                  value={messageDraft}
+                  onChange={(event) => handleDraft(event.target.value)}
+                  disabled={!selectedConversationId}
+                />
+                <button disabled={!selectedConversationId || !messageDraft.trim() || attachmentUploading}>
+                  <Send size={18} />
+                  Send
+                </button>
+              </form>
+            )}
             {error && <p className="error">{error}</p>}
           </section>
         </section>

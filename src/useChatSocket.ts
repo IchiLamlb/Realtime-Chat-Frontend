@@ -105,8 +105,15 @@ export function useChatSocket({ conversationId, token, onMessage, onReceipt, onT
     });
   }, []);
 
+  const sendReaction = useCallback((messageId: string, emoji: string | null) => {
+    clientRef.current?.publish({
+      destination: '/app/chat.reactMessage',
+      body: JSON.stringify({ messageId, emoji }),
+    });
+  }, []);
+
   return useMemo(
-    () => ({ connected, sendMessage, sendTyping, sendDelivered, sendRead }),
-    [connected, sendDelivered, sendMessage, sendRead, sendTyping],
+    () => ({ connected, sendMessage, sendTyping, sendDelivered, sendRead, sendReaction }),
+    [connected, sendDelivered, sendMessage, sendRead, sendTyping, sendReaction],
   );
 }

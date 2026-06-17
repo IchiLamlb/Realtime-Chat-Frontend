@@ -1,7 +1,7 @@
 export type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY';
 export type ConversationType = 'DIRECT' | 'GROUP';
 export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM';
-export type MessageStatus = 'SENT' | 'DELIVERED' | 'READ';
+export type MessageStatus = 'SENT' | 'DELIVERED' | 'READ' | 'DELETED';
 
 export interface ApiResponse<T> {
   timestamp: string;
@@ -53,6 +53,14 @@ export interface Conversation {
   members: ConversationMember[];
 }
 
+export interface MessageReaction {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  emoji: string;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
@@ -62,6 +70,7 @@ export interface ChatMessage {
   metadata: Record<string, unknown> | null;
   status: MessageStatus;
   createdAt: string;
+  reactions?: MessageReaction[];
 }
 
 export interface MessageHistoryResponse {
