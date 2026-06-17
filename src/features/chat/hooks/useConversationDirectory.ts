@@ -22,7 +22,12 @@ export function useConversationDirectory({
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
   const [users, setUsers] = useState<User[]>([]);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [groupName, setGroupName] = useState('');
+  const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
+  const [groupSearch, setGroupSearch] = useState('');
+  const [groupSearchResults, setGroupSearchResults] = useState<User[]>([]);
+  const [groupVisibleCount, setGroupVisibleCount] = useState(10);
   const [presenceMap, setPresenceMap] = useState<Map<string, string>>(new Map());
 
   const usersById = useMemo(() => {
@@ -52,6 +57,18 @@ export function useConversationDirectory({
 
   const selectedConversation =
     conversations.find((conversation) => conversation.id === selectedConversationId) ?? null;
+
+  const groupCandidates = useMemo(() => {
+    const map = new Map<string, User>();
+    [...usersById.values(), ...groupSearchResults].forEach((user) => {
+      if (user.id !== me?.id && user.username !== assistantUsername) {
+        map.set(user.id, user);
+      }
+    });
+    return [...map.values()].sort((first, second) => first.displayName.localeCompare(second.displayName));
+  }, [groupSearchResults, me?.id, usersById]);
+
+  const visibleGroupCandidates = groupCandidates.slice(0, groupVisibleCount);
 
   const myGroupRole = useMemo(() => {
     if (!selectedConversation || !me) return null;
@@ -166,24 +183,92 @@ export function useConversationDirectory({
   }
 
   async function createGroup() {
-    if (!token || !groupName.trim() || users.length === 0) {
+    if (!token) {
       return;
     }
 
-    const conversation = await api.createGroup(token, {
-      name: groupName.trim(),
-      avatarUrl: null,
-      memberIds: users.map((user) => user.id),
-    });
+    if (!groupName.trim()) {
+      setError('Enter a group name');
+      return;
+    }
+    if (groupMemberIds.length === 0) {
+      setError('Search and choose at least one member');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    try {
+      const conversation = await api.createGroup(token, {
+        name: groupName.trim(),
+        avatarUrl: null,
+        memberIds: groupMemberIds,
+      });
+      setGroupName('');
+      setGroupMemberIds([]);
+      setGroupSearch('');
+      setGroupSearchResults([]);
+      setGroupVisibleCount(10);
+      setShowCreateGroupModal(false);
+      await refreshConversations();
+      setSelectedConversationId(conversation.id);
+      setStatus('Group created');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to create group');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggleGroupMember(userId: string) {
+    setGroupMemberIds((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
+    );
+  }
+
+  function openCreateGroupModal() {
     setGroupName('');
-    await refreshConversations();
-    setSelectedConversationId(conversation.id);
-    setStatus('Group created');
+    setGroupMemberIds([]);
+    setGroupSearch('');
+    setGroupSearchResults([]);
+    setGroupVisibleCount(10);
+    setError(null);
+    setShowCreateGroupModal(true);
+  }
+
+  function closeCreateGroupModal() {
+    setShowCreateGroupModal(false);
+  }
+
+  async function searchGroupUsers() {
+    if (!token || groupSearch.trim().length < 2) {
+      setGroupSearchResults([]);
+      setGroupVisibleCount(10);
+      return;
+    }
+
+    setError(null);
+    try {
+      const result = await api.searchUsers(token, groupSearch.trim());
+      setGroupSearchResults(result.filter((user) => user.id !== me?.id));
+      setGroupVisibleCount(10);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Search failed');
+    }
+  }
+
+  function loadMoreGroupCandidates() {
+    setGroupVisibleCount((current) => current + 10);
   }
 
   function clearDirectory() {
     setConversations([]);
     setUsers([]);
+    setShowCreateGroupModal(false);
+    setGroupMemberIds([]);
+    setGroupSearch('');
+    setGroupSearchResults([]);
+    setGroupVisibleCount(10);
     setSelectedConversationId(null);
     setPresenceMap(new Map());
   }
@@ -196,8 +281,15 @@ export function useConversationDirectory({
     userSearch,
     setUserSearch,
     users,
+    showCreateGroupModal,
+    groupCandidates,
+    visibleGroupCandidates,
     groupName,
     setGroupName,
+    groupMemberIds,
+    groupSearch,
+    setGroupSearch,
+    groupVisibleCount,
     usersById,
     presenceMap,
     myGroupRole,
@@ -205,7 +297,12 @@ export function useConversationDirectory({
     searchUsers,
     createDirect,
     openAssistant,
+    openCreateGroupModal,
+    closeCreateGroupModal,
     createGroup,
+    toggleGroupMember,
+    searchGroupUsers,
+    loadMoreGroupCandidates,
     clearDirectory,
   };
 }

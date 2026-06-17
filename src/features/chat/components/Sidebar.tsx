@@ -46,7 +46,7 @@ export function Sidebar() {
         </div>
         <div className="user-list">
           {sidebar.users.map((user) => (
-            <button key={user.id} onClick={() => void sidebar.createDirect(user.id)}>
+            <button key={user.id} className="user-direct-button" onClick={() => void sidebar.createDirect(user.id)}>
               <span>{user.displayName}</span>
               <small>@{user.username}</small>
             </button>
@@ -59,14 +59,9 @@ export function Sidebar() {
           <Users size={16} />
           Group room
         </div>
-        <input
-          placeholder="Group name"
-          value={sidebar.groupName}
-          onChange={(event) => sidebar.setGroupName(event.target.value)}
-        />
-        <button className="wide-button" onClick={() => void sidebar.createGroup()}>
+        <button className="wide-button" onClick={sidebar.openCreateGroupModal}>
           <Plus size={16} />
-          Create from search results
+          Create group
         </button>
       </div>
 

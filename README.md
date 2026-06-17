@@ -48,9 +48,9 @@ The Vite dev server proxies these paths to `localhost:8080`:
 Implemented screens:
 
 - Register/login with JWT access token and refresh token retry
-- User search
+- User search by username, email, or display name
 - Direct conversation creation
-- Group conversation creation from current search results
+- Group conversation creation through a modal with group name, searchable member picker, 10 visible users at a time, scroll/load-more, and selected-member count
 - Conversation list
 - Message history
 - Send text message

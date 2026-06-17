@@ -110,6 +110,10 @@
   gap: 20px;
 }
 
+.modal-content.create-group-modal {
+  max-width: 560px;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -153,6 +157,67 @@
   background: transparent;
   border: 1px solid var(--line);
   color: var(--ink);
+}
+
+.create-group-modal .inline-form button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selected-member-strip {
+  width: fit-content;
+  border: 1px solid rgba(110, 127, 53, 0.24);
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: var(--olive);
+  background: rgba(110, 127, 53, 0.1);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.create-group-member-list {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.create-group-member {
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: rgba(23, 18, 13, 0.03);
+  text-align: left;
+}
+
+.create-group-member.selected {
+  border-color: rgba(110, 127, 53, 0.72);
+  background: rgba(110, 127, 53, 0.16);
+}
+
+.create-group-member small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.load-group-members {
+  border: 1px solid var(--line);
+  color: var(--rust-dark);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.create-group-submit {
+  min-width: 110px;
 }
 
 /* Member item row */

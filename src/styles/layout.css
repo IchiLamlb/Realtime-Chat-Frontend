@@ -127,11 +127,15 @@
 
 .mode-switch button,
 .conversation-list button,
-.user-list button {
+.user-direct-button {
   border: 0;
   text-align: left;
   color: var(--ink);
   background: transparent;
+}
+
+.user-list > .user-direct-button {
+  background: rgba(255, 255, 255, 0.46);
 }
 
 .mode-switch button {
@@ -275,14 +279,37 @@ input:focus {
   gap: 8px;
 }
 
-.user-list button,
+.user-direct-button,
 .conversation-list button {
   border-radius: 16px;
   padding: 12px;
 }
 
-.user-list button {
-  background: rgba(255, 255, 255, 0.46);
+.user-direct-button {
+  border: 0;
+  text-align: left;
+  color: var(--ink);
+  background: transparent;
+}
+
+.avatar-tiny {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff9eb;
+  background: var(--blue);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.empty-picker-state {
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 .wide-button {

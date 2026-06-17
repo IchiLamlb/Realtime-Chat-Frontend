@@ -39,14 +39,26 @@ export interface ChatController {
     userSearch: string;
     setUserSearch: Dispatch<SetStateAction<string>>;
     users: User[];
+    showCreateGroupModal: boolean;
+    groupCandidates: User[];
+    visibleGroupCandidates: User[];
     groupName: string;
     setGroupName: Dispatch<SetStateAction<string>>;
+    groupMemberIds: string[];
+    groupSearch: string;
+    setGroupSearch: Dispatch<SetStateAction<string>>;
+    groupVisibleCount: number;
     usersById: Map<string, User>;
     presenceMap: Map<string, string>;
     searchUsers: () => Promise<void>;
     createDirect: (userId: string) => Promise<void>;
     openAssistant: () => Promise<void>;
+    openCreateGroupModal: () => void;
+    closeCreateGroupModal: () => void;
     createGroup: () => Promise<void>;
+    toggleGroupMember: (userId: string) => void;
+    searchGroupUsers: () => Promise<void>;
+    loadMoreGroupCandidates: () => void;
   };
   chat: {
     selectedConversation: Conversation | null;
