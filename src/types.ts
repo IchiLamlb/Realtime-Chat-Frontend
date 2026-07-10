@@ -110,3 +110,36 @@ export interface WebRTCSignalEvent {
   payload: string;
   timestamp: string;
 }
+
+export interface MessagesPerMinuteMetric {
+  windowStart: string;
+  windowEnd: string;
+  messageCount: number;
+}
+
+export interface ActiveUsersMetric {
+  windowStart: string;
+  windowEnd: string;
+  activeUsers: number;
+}
+
+export interface TopConversationMetric {
+  windowStart: string;
+  windowEnd: string;
+  conversationId: string;
+  messageCount: number;
+}
+
+export interface PeakTrafficWindowMetric {
+  windowStart: string;
+  windowEnd: string;
+  messageCount: number;
+}
+
+export interface RateLimitRatioMetric {
+  windowStart: string;
+  windowEnd: string;
+  totalEvents: number;
+  rateLimitedEvents: number;
+  rateLimitRatio: number;
+}

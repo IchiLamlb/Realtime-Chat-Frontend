@@ -1,4 +1,5 @@
 import { AuthPanel } from '../auth/components/AuthPanel';
+import { AdminPanelModal } from './components/AdminPanelModal';
 import { ChatControllerProvider } from './components/ChatControllerProvider';
 import { useChatController } from './hooks/useChatController';
 import { ChatWorkspace } from './components/ChatWorkspace';
@@ -16,6 +17,7 @@ export function ChatApp() {
         <HeroPanel />
         {controller.session.isAuthenticated ? <ChatWorkspace /> : <AuthPanel />}
         <ProfileModal />
+        <AdminPanelModal />
         <CreateGroupModal />
         <GroupSettingsModal />
       </main>

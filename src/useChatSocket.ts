@@ -1,6 +1,6 @@
 import { Client, type IMessage } from '@stomp/stompjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChatMessage, MessageReceipt, TypingEvent, WebRTCSignalEvent } from './types';
+import type { ChatMessage, MessageReceipt, MessageType, TypingEvent, WebRTCSignalEvent } from './types';
 
 interface UseChatSocketOptions {
   conversationId: string | null;
@@ -86,7 +86,7 @@ export function useChatSocket({ conversationId, token, onMessage, onReceipt, onT
     };
   }, [conversationId, token, onMessage, onReceipt, onTyping, onWebRTCSignal]);
 
-  const sendMessage = useCallback((payload: { conversationId: string; type: 'TEXT'; content: string; metadata: Record<string, unknown> }) => {
+  const sendMessage = useCallback((payload: { conversationId: string; type: MessageType; content: string; metadata: Record<string, unknown> }) => {
     clientRef.current?.publish({
       destination: '/app/chat.sendMessage',
       body: JSON.stringify(payload),

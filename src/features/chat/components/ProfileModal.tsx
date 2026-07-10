@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { ShieldCheck, X } from 'lucide-react';
 import { useChatControllerContext } from '../model/useChatControllerContext';
 import { ImageCropper } from './ImageCropper';
 
+const APP_ADMIN_EMAIL = 'admin@gmail.com';
+
 export function ProfileModal() {
-  const { chat, profile } = useChatControllerContext();
+  const { adminPanel, chat, profile, session } = useChatControllerContext();
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const canManageApp = session.me?.email.toLowerCase() === APP_ADMIN_EMAIL;
 
   if (!profile.show) {
     return null;
@@ -80,6 +83,19 @@ export function ProfileModal() {
               </label>
             </div>
             <div className="modal-footer">
+              {canManageApp ? (
+                <button
+                  type="button"
+                  className="admin-manage-button"
+                  onClick={() => {
+                    profile.close();
+                    adminPanel.open();
+                  }}
+                >
+                  <ShieldCheck size={16} />
+                  Quản lý ứng dụng
+                </button>
+              ) : null}
               <button type="button" className="secondary" onClick={profile.close}>
                 Cancel
               </button>

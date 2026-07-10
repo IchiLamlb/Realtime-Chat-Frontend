@@ -1,4 +1,19 @@
-import type { ApiError, ApiResponse, AuthResponse, ChatMessage, Conversation, MessageHistoryResponse, MessageReceipt, Presence, User } from './types';
+import type {
+  ActiveUsersMetric,
+  ApiError,
+  ApiResponse,
+  AuthResponse,
+  ChatMessage,
+  Conversation,
+  MessageHistoryResponse,
+  MessageReceipt,
+  MessagesPerMinuteMetric,
+  PeakTrafficWindowMetric,
+  Presence,
+  RateLimitRatioMetric,
+  TopConversationMetric,
+  User,
+} from './types';
 import { clearSession, loadSession, saveSession } from './storage';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -99,6 +114,11 @@ export const api = {
     request<AuthResponse>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+  logout: async (refreshToken: string) =>
+    request<void>('/api/v1/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
     }),
   forgotPassword: async (payload: { email: string }) =>
     request<void>('/api/v1/auth/forgot-password', {
@@ -223,4 +243,14 @@ export const api = {
       method: 'DELETE',
       token,
     }),
+  messagesPerMinute: async (token: string, limit = 20) =>
+    request<MessagesPerMinuteMetric[]>(`/api/v1/analytics/messages-per-minute?limit=${limit}`, { token }),
+  activeUsers: async (token: string, limit = 20) =>
+    request<ActiveUsersMetric[]>(`/api/v1/analytics/active-users?limit=${limit}`, { token }),
+  topConversations: async (token: string, limit = 10) =>
+    request<TopConversationMetric[]>(`/api/v1/analytics/top-conversations?limit=${limit}`, { token }),
+  peakTrafficWindow: async (token: string) =>
+    request<PeakTrafficWindowMetric>('/api/v1/analytics/peak-traffic-window', { token }),
+  rateLimitRatio: async (token: string, limit = 20) =>
+    request<RateLimitRatioMetric[]>(`/api/v1/analytics/rate-limit-ratio?limit=${limit}`, { token }),
 };

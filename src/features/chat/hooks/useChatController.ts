@@ -51,6 +51,7 @@ export function useChatController(): ChatController {
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
   const [webrtcSignalEvent, setWebrtcSignalEvent] = useState<WebRTCSignalEvent | null>(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -420,6 +421,11 @@ export function useChatController(): ChatController {
   }
 
   function logout() {
+    if (refreshToken) {
+      api.logout(refreshToken).catch(() => {
+        // fail softly
+      });
+    }
     authSession.clearAuthSession();
     directory.clearDirectory();
     setMessages([]);
@@ -550,6 +556,11 @@ export function useChatController(): ChatController {
       webrtc,
     },
     profile: profileSettings,
+    adminPanel: {
+      show: showAdminPanel,
+      open: () => setShowAdminPanel(true),
+      close: () => setShowAdminPanel(false),
+    },
     group: groupSettings,
   };
 }

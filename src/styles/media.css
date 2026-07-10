@@ -54,6 +54,11 @@
   .message-row {
     max-width: 90%;
   }
+
+  .admin-summary-grid,
+  .admin-section-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -73,6 +78,28 @@
   .chat-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .admin-manage-button {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .admin-panel-modal {
+    max-width: calc(100vw - 18px);
+    padding: 18px;
+  }
+
+  .admin-table-row:has(span:nth-child(2)) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-table-row:has(span:nth-child(2)) span:nth-child(2) {
+    display: none;
   }
 }
 

@@ -123,6 +123,11 @@ export interface ChatController {
     close: () => void;
     submit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   };
+  adminPanel: {
+    show: boolean;
+    open: () => void;
+    close: () => void;
+  };
   group: {
     show: boolean;
     form: GroupForm;
